@@ -1,6 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { DashboardService } from '../../core/services/dashboard.service';
+import { PagamentosService } from '../../core/services/pagamentos.service';
+import { DashboardDto, PagamentoDto } from '../../core/models/models';
 
 @Component({
   selector: 'app-financeiro',
@@ -8,155 +11,111 @@ import { RouterModule } from '@angular/router';
   imports: [CommonModule, RouterModule],
   template: `
     <div style="padding:2.5rem;max-width:1400px;margin:0 auto;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-
       <div style="margin-bottom:2.5rem;">
         <h1 style="font-size:1.875rem;font-weight:700;color:#fff;margin:0 0 0.375rem 0;letter-spacing:-0.025em;">
           Painel <span style="color:#c8ff00;">Financeiro</span>
         </h1>
-        <p style="color:#a1a1aa;margin:0;font-size:0.875rem;">Visao geral das financias da academia</p>
+        <p style="color:#a1a1aa;margin:0;font-size:0.875rem;">Visao geral das financas da academia</p>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;">
+      @if (loading()) {
+        <div style="text-align:center;padding:3rem;color:#52525b;">Carregando dados financeiros...</div>
+      }
 
-        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;transition:all 0.2s ease;"
-             onmouseover="this.style.borderColor='#2a2a2e'" onmouseout="this.style.borderColor='#1e1e22'">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;">
+        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:0.75rem;font-weight:500;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Receita Mensal</span>
             <span style="font-size:0.7rem;color:#c8ff00;font-weight:600;background:rgba(200,255,0,0.08);padding:0.2rem 0.5rem;border-radius:100px;">+0%</span>
           </div>
-          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">R$ 0</span>
+          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">R$ {{ ((dashboardData()?.receitaMensal || 0)).toFixed(2) }}</span>
         </div>
-
-        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;transition:all 0.2s ease;"
-             onmouseover="this.style.borderColor='#2a2a2e'" onmouseout="this.style.borderColor='#1e1e22'">
+        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:0.75rem;font-weight:500;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Alunos Ativos</span>
             <span style="font-size:0.7rem;color:#c8ff00;font-weight:600;background:rgba(200,255,0,0.08);padding:0.2rem 0.5rem;border-radius:100px;">+0</span>
           </div>
-          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">0</span>
+          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">{{ dashboardData()?.alunosAtivos || 0 }}</span>
         </div>
-
-        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;transition:all 0.2s ease;"
-             onmouseover="this.style.borderColor='#2a2a2e'" onmouseout="this.style.borderColor='#1e1e22'">
+        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:0.75rem;font-weight:500;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Inadimplentes</span>
-            <span style="font-size:0.7rem;color:#a1a1aa;font-weight:600;background:rgba(161,161,170,0.08);padding:0.2rem 0.5rem;border-radius:100px;">0%</span>
           </div>
-          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">0</span>
+          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">{{ dashboardData()?.mensalidadesPendentes || 0 }}</span>
         </div>
-
-        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;transition:all 0.2s ease;"
-             onmouseover="this.style.borderColor='#2a2a2e'" onmouseout="this.style.borderColor='#1e1e22'">
+        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
-            <span style="font-size:0.75rem;font-weight:500;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Ticket Medio</span>
-            <span style="font-size:0.7rem;color:#c8ff00;font-weight:600;background:rgba(200,255,0,0.08);padding:0.2rem 0.5rem;border-radius:100px;">+0%</span>
+            <span style="font-size:0.75rem;font-weight:500;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Novas Matriculas</span>
           </div>
-          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">R$ 0,00</span>
+          <span style="font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-0.03em;">{{ dashboardData()?.novasMatriculasMes || 0 }}</span>
         </div>
-
       </div>
 
       <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:1.5rem;margin-bottom:2rem;">
-
         <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.5rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
-            <h2 style="font-size:1rem;font-weight:600;color:#fff;margin:0;">Receita Mensal</h2>
-            <div style="display:flex;gap:1.25rem;">
-              <span style="display:flex;align-items:center;gap:0.375rem;font-size:0.7rem;color:#a1a1aa;">
-                <span style="width:8px;height:8px;border-radius:2px;background:#c8ff00;display:inline-block;"></span>Receita
-              </span>
-              <span style="display:flex;align-items:center;gap:0.375rem;font-size:0.7rem;color:#a1a1aa;">
-                <span style="width:8px;height:8px;border-radius:2px;background:#52525b;display:inline-block;"></span>Despesas
-              </span>
-            </div>
-          </div>
-          <div style="display:flex;align-items:flex-end;justify-content:space-between;height:200px;gap:0.5rem;padding-top:1rem;">
-            @for (month of monthlyData(); track month.name) {
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;gap:0;">
-                <div style="flex:1;display:flex;align-items:flex-end;gap:3px;width:100%;justify-content:center;">
-                  <div [style.height.%]="month.revenue" style="flex:1;max-width:20px;border-radius:3px 3px 0 0;background:#c8ff00;transition:height 0.5s ease;"></div>
-                  <div [style.height.%]="month.expense" style="flex:1;max-width:20px;border-radius:3px 3px 0 0;background:#52525b;transition:height 0.5s ease;"></div>
-                </div>
-                <span style="font-size:0.65rem;color:#52525b;margin-top:0.5rem;">{{ month.name }}</span>
-              </div>
-            }
-          </div>
-        </div>
-
-        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.5rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
-            <h2 style="font-size:1rem;font-weight:600;color:#fff;margin:0;">Ultimos Pagamentos</h2>
-            <a routerLink="/financeiro/relatorios" style="font-size:0.75rem;color:#c8ff00;text-decoration:none;font-weight:500;">Ver todos</a>
-          </div>
+          <h2 style="font-size:1rem;font-weight:600;color:#fff;margin:0 0 1rem 0;">Ultimos Pagamentos</h2>
           <div style="display:flex;flex-direction:column;gap:0;">
-            @for (payment of recentPayments(); track payment.id; let i = $index) {
-              <div [style.border-bottom]="i < recentPayments().length - 1 ? '1px solid #1e1e22' : 'none'"
-                   style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 0;transition:background 0.15s ease;"
-                   onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+            @for (payment of pagamentos().slice(0, 10); track payment.id; let i = $index) {
+              <div [style.border-bottom]="i < pagamentos().slice(0, 10).length - 1 ? '1px solid #1e1e22' : 'none'"
+                   style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 0;">
                 <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;background:rgba(200,255,0,0.08);color:#c8ff00;flex-shrink:0;">
-                  {{ payment.status === 'paid' ? '✓' : '○' }}
+                  {{ payment.status === 'Pago' ? '✓' : '○' }}
                 </div>
                 <div style="flex:1;min-width:0;">
-                  <div style="font-size:0.8125rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ payment.student }}</div>
-                  <div style="font-size:0.6875rem;color:#52525b;">{{ payment.plan }}</div>
+                  <div style="font-size:0.8125rem;font-weight:600;color:#fff;">Pagamento</div>
+                  <div style="font-size:0.6875rem;color:#52525b;">{{ payment.data | date:'dd/MM/yyyy' }}</div>
                 </div>
                 <div style="text-align:right;">
-                  <div style="font-size:0.8125rem;font-weight:600;color:#fff;">R$ {{ payment.amount }}</div>
-                  <div style="font-size:0.625rem;color:#52525b;">{{ payment.date }}</div>
+                  <div style="font-size:0.8125rem;font-weight:600;color:#fff;">R$ {{ payment.valor.toFixed(2) }}</div>
                 </div>
               </div>
             }
           </div>
         </div>
 
-      </div>
-
-      <div style="margin-bottom:1rem;">
-        <h2 style="font-size:1rem;font-weight:600;color:#fff;margin:0 0 1rem 0;">Inadimplencia</h2>
-        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;overflow:hidden;">
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="padding:0.875rem 1.25rem;text-align:left;font-size:0.6875rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.05em;background:#09090b;border-bottom:1px solid #1e1e22;">Aluno</th>
-                <th style="padding:0.875rem 1.25rem;text-align:left;font-size:0.6875rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.05em;background:#09090b;border-bottom:1px solid #1e1e22;">Plano</th>
-                <th style="padding:0.875rem 1.25rem;text-align:left;font-size:0.6875rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.05em;background:#09090b;border-bottom:1px solid #1e1e22;">Valor</th>
-                <th style="padding:0.875rem 1.25rem;text-align:left;font-size:0.6875rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.05em;background:#09090b;border-bottom:1px solid #1e1e22;">Dias Atraso</th>
-                <th style="padding:0.875rem 1.25rem;text-align:left;font-size:0.6875rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:0.05em;background:#09090b;border-bottom:1px solid #1e1e22;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of inadimplentes(); track item.id) {
-                <tr style="transition:background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-                  <td style="padding:0.875rem 1.25rem;font-size:0.8125rem;color:#fff;border-bottom:1px solid #1e1e22;font-weight:500;">{{ item.aluno }}</td>
-                  <td style="padding:0.875rem 1.25rem;font-size:0.8125rem;color:#a1a1aa;border-bottom:1px solid #1e1e22;">{{ item.plano }}</td>
-                  <td style="padding:0.875rem 1.25rem;font-size:0.8125rem;color:#fff;border-bottom:1px solid #1e1e22;font-weight:600;">R$ {{ item.valor }}</td>
-                  <td style="padding:0.875rem 1.25rem;font-size:0.8125rem;color:#a1a1aa;border-bottom:1px solid #1e1e22;">{{ item.dias }}</td>
-                  <td style="padding:0.875rem 1.25rem;border-bottom:1px solid #1e1e22;">
-                    <span style="display:inline-block;padding:0.2rem 0.625rem;border-radius:100px;font-size:0.6875rem;font-weight:600;background:rgba(161,161,170,0.1);color:#a1a1aa;">{{ item.status }}</span>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div style="background:#111113;border:1px solid #1e1e22;border-radius:12px;padding:1.5rem;">
+          <h2 style="font-size:1rem;font-weight:600;color:#fff;margin:0 0 1rem 0;">Atividades Recentes</h2>
+          <div style="display:flex;flex-direction:column;gap:0;">
+            @for (act of (dashboardData()?.atividadesRecentes || []).slice(0, 8); track act.tipo + act.data; let i = $index) {
+              <div [style.border-bottom]="i < 7 ? '1px solid #1e1e22' : 'none'"
+                   style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 0;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#c8ff00;flex-shrink:0;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                  <span style="font-size:0.8125rem;color:#fff;">{{ act.descricao }}</span>
+                  <span style="font-size:0.6875rem;color:#52525b;">{{ act.data }}</span>
+                </div>
+              </div>
+            }
+          </div>
         </div>
       </div>
-
     </div>
   `,
   styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    :host {
-      display: block;
-      background: #09090b;
-      min-height: 100vh;
-    }
+    :host { display: block; background: #09090b; min-height: 100vh; }
   `]
 })
-export class FinanceiroComponent {
-  monthlyData = signal([] as { name: string; revenue: number; expense: number }[]);
+export class FinanceiroComponent implements OnInit {
+  private dashboardService = inject(DashboardService);
+  private pagamentosService = inject(PagamentosService);
 
-  recentPayments = signal([] as { id: string; student: string; plan: string; amount: string; date: string; status: string }[]);
+  loading = signal(false);
+  dashboardData = signal<DashboardDto | null>(null);
+  pagamentos = signal<PagamentoDto[]>([]);
 
-  inadimplentes = signal([] as { id: string; aluno: string; plano: string; valor: string; dias: string; status: string }[]);
+  ngOnInit(): void {
+    this.loadData();
+  }
+
+  loadData(): void {
+    this.loading.set(true);
+    this.dashboardService.getDashboard().subscribe({
+      next: (res) => { if (res.success && res.data) this.dashboardData.set(res.data); },
+      error: () => {}
+    });
+    this.pagamentosService.getAll().subscribe({
+      next: (res) => { if (res.success && res.data) this.pagamentos.set(res.data); this.loading.set(false); },
+      error: () => { this.loading.set(false); }
+    });
+  }
 }
