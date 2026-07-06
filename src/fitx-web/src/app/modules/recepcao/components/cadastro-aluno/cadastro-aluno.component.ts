@@ -33,19 +33,9 @@ import { CreateAlunoDto, PlanoDto, ProfessorDto } from '../../../../core/models/
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Senha *</label>
-            <input type="password" class="form-input" placeholder="Senha inicial" [(ngModel)]="formData.password" />
-          </div>
-          <div class="form-group">
             <label>Telefone</label>
             <input type="tel" class="form-input" placeholder="(00) 00000-0000" [(ngModel)]="formData.telefone" />
           </div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h2>Plano e Matrícula</h2>
-        <div class="form-row">
           <div class="form-group">
             <label>Plano</label>
             <select class="form-select" [(ngModel)]="formData.planoId">
@@ -55,6 +45,12 @@ import { CreateAlunoDto, PlanoDto, ProfessorDto } from '../../../../core/models/
               }
             </select>
           </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2>Professor</h2>
+        <div class="form-row">
           <div class="form-group">
             <label>Professor</label>
             <select class="form-select" [(ngModel)]="formData.professorId">
@@ -115,7 +111,7 @@ export class CadastroAlunoComponent implements OnInit {
   professores = signal<ProfessorDto[]>([]);
 
   formData = {
-    nome: '', email: '', password: '', telefone: '',
+    nome: '', email: '', telefone: '',
     planoId: '', professorId: '', observacoes: ''
   };
 
@@ -125,13 +121,13 @@ export class CadastroAlunoComponent implements OnInit {
   }
 
   canSave(): boolean {
-    return !!this.formData.nome && !!this.formData.email && !!this.formData.password;
+    return !!this.formData.nome && !!this.formData.email;
   }
 
   saveStudent(): void {
     if (!this.canSave()) return;
     const dto: CreateAlunoDto = {
-      nome: this.formData.nome, email: this.formData.email, password: this.formData.password,
+      nome: this.formData.nome, email: this.formData.email, password: '123456',
       telefone: this.formData.telefone, planoId: this.formData.planoId || undefined,
       professorId: this.formData.professorId || undefined, observacoes: this.formData.observacoes
     };
