@@ -1,0 +1,45 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.nupkg
+*.snupkg
+.vs/
+*.userprefs
+
+## Node
+node_modules/
+dist/
+.angular/
+.npm/
+
+## IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+## OS
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+## Docker
+docker-compose.override.yml
+
+## Logs
+*.log
+logs/
+
+## Test results
+TestResults/
+
+## Environment
+.env
+.env.local

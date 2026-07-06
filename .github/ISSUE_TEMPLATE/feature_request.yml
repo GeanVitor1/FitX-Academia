@@ -1,0 +1,31 @@
+name: Sugerir Funcionalidade
+description: Compartilhe uma ideia para o projeto
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "## Sugestão de Funcionalidade"
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema Relacionado
+      description: O problema que esta funcionalidade resolveria
+    validations:
+      required: true
+  - type: textarea
+    id: solucao
+    attributes:
+      label: Solução Desejada
+      description: Descreva a funcionalidade que você gostaria
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas Consideradas
+      description: Alternativas que você considerou
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto Adicional
+      description: Screenshots, mockups, etc.

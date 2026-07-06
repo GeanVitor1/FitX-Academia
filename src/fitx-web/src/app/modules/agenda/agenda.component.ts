@@ -1,0 +1,1051 @@
+import { Component, signal, computed, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+
+interface Aluno {
+  id: string;
+  nome: string;
+  email: string;
+  plano: string;
+  telefone: string;
+  peso: string;
+  altura: string;
+  observacoes: string;
+}
+
+interface Treino {
+  id: string;
+  alunoId: string;
+  alunoNome: string;
+  data: string;
+  horario: string;
+  tipo: string;
+  descricao: string;
+  observacoes: string;
+  status: 'Agendado' | 'Concluido' | 'Cancelado';
+  exercicios: ExercicioTreino[];
+}
+
+interface ExercicioTreino {
+  id: string;
+  nome: string;
+  grupoMuscular: string;
+  series: number;
+  repeticoes: string;
+  carga: string;
+  descanso: string;
+  observacoes: string;
+}
+
+interface ExercicioLib {
+  id: string;
+  nome: string;
+  grupoMuscular: string;
+  categoria: string;
+  favorito: boolean;
+}
+
+interface DayColumn {
+  date: Date;
+  dayName: string;
+  dayNumber: number;
+  isToday: boolean;
+}
+
+@Component({
+  selector: 'app-agenda',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="agenda-page">
+      <header class="page-header">
+        <div class="header-left">
+          <h1>Agenda de <span class="accent">Treinos</span></h1>
+          <p class="subtitle">Gerencie os treinos dos seus alunos</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-ghost" (click)="goToToday()">Hoje</button>
+          <button class="btn-primary" (click)="openNewTraining()">+ Novo Treino</button>
+        </div>
+      </header>
+
+      <div class="week-nav">
+        <button class="week-nav-btn" (click)="previousWeek()">
+          <span class="nav-arrow">&#8249;</span>
+        </button>
+        <div class="week-info">
+          <span class="week-label">{{ weekLabel() }}</span>
+          <span class="week-range">{{ weekRange() }}</span>
+        </div>
+        <button class="week-nav-btn" (click)="nextWeek()">
+          <span class="nav-arrow">&#8250;</span>
+        </button>
+      </div>
+
+      <div class="calendar-grid">
+        <div class="day-headers">
+          <div class="day-header-corner"></div>
+          @for (day of weekDays(); track day.date.toISOString()) {
+            <div class="day-header" [class.today]="day.isToday">
+              <span class="day-name">{{ day.dayName }}</span>
+              <span class="day-number" [class.today-number]="day.isToday">{{ day.dayNumber }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="time-grid">
+          @for (hour of hours; track hour) {
+            <div class="time-row">
+              <div class="time-label">{{ hour }}</div>
+              @for (day of weekDays(); track day.date.toISOString()) {
+                <div class="time-slot" [class.today]="day.isToday" (click)="openSlot(day, hour)">
+                  @for (treino of getTreinosForSlot(day.date, hour); track treino.id) {
+                    <div class="treino-card" [class]="treino.status.toLowerCase()" (click)="openTraining(treino, $event)">
+                      <span class="treino-aluno">{{ treino.alunoNome }}</span>
+                      <span class="treino-tipo">{{ treino.tipo }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (showModal()) {
+        <div class="modal-overlay" (click)="closeModal()">
+          <div class="modal-panel" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2>{{ modalMode() === 'create' ? 'Novo Treino' : modalMode() === 'edit' ? 'Editar Treino' : 'Detalhes do Treino' }}</h2>
+              <button class="close-btn" (click)="closeModal()">&#215;</button>
+            </div>
+
+            @if (modalMode() === 'detail') {
+              <div class="modal-body">
+                <div class="detail-grid">
+                  <div class="detail-row">
+                    <span class="detail-label">Aluno</span>
+                    <span class="detail-value">{{ selectedTreino()?.alunoNome }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Data</span>
+                    <span class="detail-value">{{ selectedTreino()?.data }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Horario</span>
+                    <span class="detail-value">{{ selectedTreino()?.horario }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Tipo</span>
+                    <span class="detail-value">{{ selectedTreino()?.tipo }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Status</span>
+                    <span class="status-badge" [class]="selectedTreino()?.status?.toLowerCase()">{{ selectedTreino()?.status }}</span>
+                  </div>
+                </div>
+
+                @if (selectedTreino()?.descricao) {
+                  <div class="detail-section">
+                    <span class="section-label">Descricao</span>
+                    <p class="detail-desc">{{ selectedTreino()?.descricao }}</p>
+                  </div>
+                }
+
+                @if (selectedTreino()?.exercicios?.length) {
+                  <div class="detail-section">
+                    <span class="section-label">Exercicios ({{ selectedTreino()?.exercicios?.length }})</span>
+                    <div class="exercises-list">
+                      @for (ex of selectedTreino()?.exercicios || []; track ex.id) {
+                        <div class="exercise-row">
+                          <div class="exercise-row-left">
+                            <span class="exercise-index">{{ $index + 1 }}</span>
+                            <div class="exercise-info">
+                              <span class="ex-name">{{ ex.nome }}</span>
+                              <span class="ex-group">{{ ex.grupoMuscular }}</span>
+                            </div>
+                          </div>
+                          <span class="ex-detail">{{ ex.series }}x{{ ex.repeticoes }} {{ ex.carga }}kg</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (selectedTreino()?.observacoes) {
+                  <div class="detail-section">
+                    <span class="section-label">Observacoes</span>
+                    <p class="detail-desc">{{ selectedTreino()?.observacoes }}</p>
+                  </div>
+                }
+
+                <div class="modal-actions">
+                  <button class="btn-secondary" (click)="duplicateTraining()">Duplicar</button>
+                  <button class="btn-secondary" (click)="editFromDetail()">Editar</button>
+                  <button class="btn-danger-sm" (click)="deleteTraining()">Excluir</button>
+                </div>
+              </div>
+            } @else {
+              <div class="modal-tabs">
+                <button class="tab-btn" [class.active]="activeTab() === 'info'" (click)="activeTab.set('info')">Informacoes</button>
+                <button class="tab-btn" [class.active]="activeTab() === 'exercises'" (click)="activeTab.set('exercises')">
+                  Exercicios
+                  @if (formData.exercicios.length > 0) {
+                    <span class="tab-count">{{ formData.exercicios.length }}</span>
+                  }
+                </button>
+              </div>
+
+              @if (activeTab() === 'info') {
+                <div class="modal-body">
+                  <div class="form-section">
+                    <label class="form-label">Aluno</label>
+                    <select class="form-select" [(ngModel)]="formData.alunoId" (ngModelChange)="onAlunoChange()">
+                      <option value="">Selecione o aluno</option>
+                      @for (aluno of alunos; track aluno.id) {
+                        <option [value]="aluno.id">{{ aluno.nome }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  @if (selectedAluno()) {
+                    <div class="aluno-info-card">
+                      <div class="aluno-info-grid">
+                        <div class="aluno-info-item">
+                          <span class="aluno-info-key">Plano</span>
+                          <span class="aluno-info-val">{{ selectedAluno()?.plano }}</span>
+                        </div>
+                        <div class="aluno-info-item">
+                          <span class="aluno-info-key">Telefone</span>
+                          <span class="aluno-info-val">{{ selectedAluno()?.telefone }}</span>
+                        </div>
+                        <div class="aluno-info-item">
+                          <span class="aluno-info-key">Peso</span>
+                          <span class="aluno-info-val">{{ selectedAluno()?.peso }}kg</span>
+                        </div>
+                        <div class="aluno-info-item">
+                          <span class="aluno-info-key">Altura</span>
+                          <span class="aluno-info-val">{{ selectedAluno()?.altura }}</span>
+                        </div>
+                      </div>
+                      @if (selectedAluno()?.observacoes) {
+                        <div class="aluno-obs">{{ selectedAluno()?.observacoes }}</div>
+                      }
+                    </div>
+                  }
+
+                  <div class="form-section">
+                    <label class="form-label">Tipo de Treino</label>
+                    <input class="form-input" [(ngModel)]="formData.tipo" placeholder="Ex: Peito e Triceps, Pernas, Full Body...">
+                  </div>
+
+                  <div class="form-row-2">
+                    <div class="form-section">
+                      <label class="form-label">Status</label>
+                      <select class="form-select" [(ngModel)]="formData.status">
+                        <option value="Agendado">Agendado</option>
+                        <option value="Concluido">Concluido</option>
+                        <option value="Cancelado">Cancelado</option>
+                      </select>
+                    </div>
+                    <div class="form-section">
+                      <label class="form-label">Data</label>
+                      <input class="form-input" type="text" [value]="formData.data" (input)="formData.data = $any($event.target).value" placeholder="DD/MM/AAAA">
+                    </div>
+                  </div>
+
+                  <div class="form-section">
+                    <label class="form-label">Descricao</label>
+                    <textarea class="form-textarea" [(ngModel)]="formData.descricao" rows="2" placeholder="Descricao do treino..."></textarea>
+                  </div>
+
+                  <div class="form-section">
+                    <label class="form-label">Observacoes</label>
+                    <textarea class="form-textarea" [(ngModel)]="formData.observacoes" rows="2" placeholder="Observacoes adicionais..."></textarea>
+                  </div>
+
+                  <div class="modal-actions">
+                    <button class="btn-secondary" (click)="closeModal()">Cancelar</button>
+                    <button class="btn-primary" (click)="activeTab.set('exercises')">Proximo &#8594;</button>
+                  </div>
+                </div>
+              }
+
+              @if (activeTab() === 'exercises') {
+                <div class="modal-body exercise-layout">
+                  <div class="exercise-browser">
+                    <input class="exercise-search" type="text" placeholder="Buscar exercicio..." [(ngModel)]="searchExerciseTerm">
+
+                    <div class="grupo-grid">
+                      @for (grupo of gruposMusculares; track grupo) {
+                        <button class="grupo-card" [class.active]="selectedGrupoMuscular() === grupo" (click)="toggleGrupoMuscular(grupo)">
+                          <span class="grupo-name">{{ grupo }}</span>
+                        </button>
+                      }
+                    </div>
+
+                    @if (selectedGrupoMuscular()) {
+                      <div class="categoria-list">
+                        @for (cat of getCategoriasForGrupo(selectedGrupoMuscular()!); track cat) {
+                          <button class="categoria-btn" [class.active]="selectedCategoria() === cat" (click)="toggleCategoria(cat)">
+                            <span>{{ cat }}</span>
+                            <span class="categoria-count">{{ getExerciciosForCategoria(selectedGrupoMuscular()!, cat).length }}</span>
+                          </button>
+                        }
+                      </div>
+
+                      <div class="exercicio-lib-list">
+                        @for (ex of getFilteredExercicios(); track ex.id) {
+                          <div class="exercicio-lib-item">
+                            <div class="exercicio-lib-left">
+                              <button class="fav-btn" [class.favorited]="ex.favorito" (click)="toggleFavorite(ex.id)">&#9733;</button>
+                              <div class="exercicio-lib-info">
+                                <span class="exercicio-lib-name">{{ ex.nome }}</span>
+                                <span class="exercicio-lib-meta">{{ ex.categoria }}</span>
+                              </div>
+                            </div>
+                            <button class="add-ex-btn" (click)="addExercicioFromLib(ex)">+</button>
+                          </div>
+                        }
+                        @if (getFilteredExercicios().length === 0) {
+                          <div class="empty-lib">
+                            <p>Nenhum exercicio encontrado</p>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <div class="exercise-panel">
+                    <div class="exercise-panel-header">
+                      <span class="exercise-panel-title">Exercicios Adicionados</span>
+                      <span class="exercise-panel-count">{{ formData.exercicios.length }}</span>
+                    </div>
+
+                    <div class="exercise-panel-list">
+                      @if (formData.exercicios.length === 0) {
+                        <div class="empty-exercises">
+                          <span class="empty-icon">&#9881;</span>
+                          <p>Nenhum exercicio adicionado</p>
+                          <span class="empty-hint">Selecione um grupo muscular ao lado e adicione exercicios</span>
+                        </div>
+                      }
+
+                      @for (ex of formData.exercicios; track ex.id; let i = $index) {
+                        <div class="exercise-edit-card">
+                          <div class="exercise-edit-header">
+                            <div class="exercise-edit-left">
+                              <span class="exercise-edit-index">{{ i + 1 }}</span>
+                              <div>
+                                <span class="exercise-edit-name">{{ ex.nome }}</span>
+                                <span class="exercise-edit-group">{{ ex.grupoMuscular }}</span>
+                              </div>
+                            </div>
+                            <div class="exercise-edit-actions">
+                              <button class="move-btn" [disabled]="i === 0" (click)="moveExercicioUp(i)">&#9650;</button>
+                              <button class="move-btn" [disabled]="i === formData.exercicios.length - 1" (click)="moveExercicioDown(i)">&#9660;</button>
+                              <button class="del-btn" (click)="removeExercicio(i)">&#215;</button>
+                            </div>
+                          </div>
+                          <div class="exercise-edit-fields">
+                            <div class="ex-field">
+                              <label class="ex-field-label">Series</label>
+                              <input class="ex-field-input" type="number" [(ngModel)]="ex.series" min="1">
+                            </div>
+                            <div class="ex-field">
+                              <label class="ex-field-label">Reps</label>
+                              <input class="ex-field-input" [(ngModel)]="ex.repeticoes" placeholder="12">
+                            </div>
+                            <div class="ex-field">
+                              <label class="ex-field-label">Carga</label>
+                              <input class="ex-field-input" [(ngModel)]="ex.carga" placeholder="kg">
+                            </div>
+                            <div class="ex-field">
+                              <label class="ex-field-label">Descanso</label>
+                              <input class="ex-field-input" [(ngModel)]="ex.descanso" placeholder="60s">
+                            </div>
+                          </div>
+                          <div class="exercise-edit-obs">
+                            <input class="ex-obs-input" [(ngModel)]="ex.observacoes" placeholder="Observacao...">
+                          </div>
+                        </div>
+                      }
+                    </div>
+
+                    <div class="modal-actions">
+                      <button class="btn-secondary" (click)="activeTab.set('info')">&#8592; Voltar</button>
+                      <button class="btn-primary" (click)="saveTraining()">{{ modalMode() === 'edit' ? 'Salvar' : 'Agendar' }}</button>
+                    </div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      }
+
+      <div class="history-section">
+        <div class="section-header-row">
+          <h2>Historico de Treinos</h2>
+          <span class="count-badge">{{ treinos().length }} treinos</span>
+        </div>
+        <div class="history-list">
+          @for (treino of treinos(); track treino.id) {
+            <div class="history-item" (click)="openTraining(treino, $event)">
+              <div class="history-date">
+                <span class="history-day">{{ treino.data }}</span>
+                <span class="history-time">{{ treino.horario }}</span>
+              </div>
+              <div class="history-info">
+                <span class="history-aluno">{{ treino.alunoNome }}</span>
+                <span class="history-tipo">{{ treino.tipo }}</span>
+              </div>
+              <span class="status-badge" [class]="treino.status.toLowerCase()">{{ treino.status }}</span>
+            </div>
+          }
+          @if (treinos().length === 0) {
+            <div class="empty-state">
+              <span class="empty-icon">&#9671;</span>
+              <p>Nenhum treino encontrado</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [`
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :host {
+      --c-bg: #09090b;
+      --c-bg-elevated: #111113;
+      --c-bg-surface: #18181b;
+      --c-bg-hover: #1e1e22;
+      --c-primary: #c8ff00;
+      --c-primary-hover: #d4ff33;
+      --c-text: #fafafa;
+      --c-text-secondary: #a1a1aa;
+      --c-text-muted: #52525b;
+      --c-text-dim: #3f3f46;
+      --c-border: #1e1e22;
+      --c-border-subtle: #18181b;
+      --c-success: #a1a1aa;
+      --c-danger: #a1a1aa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .agenda-page { padding: 2rem; max-width: 1400px; margin: 0 auto; font-family: 'Inter', -apple-system, sans-serif; background: var(--c-bg); color: var(--c-text); min-height: 100vh; }
+
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.75rem; font-weight: 700; color: var(--c-text); margin: 0; letter-spacing: -0.02em; }
+    .accent { color: var(--c-primary); }
+    .subtitle { font-size: 13px; color: var(--c-text-muted); margin: 4px 0 0; }
+    .header-actions { display: flex; gap: 8px; }
+
+    .btn-primary { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; background: var(--c-primary); color: #09090b; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 200ms ease; }
+    .btn-primary:hover { background: var(--c-primary-hover); }
+    .btn-secondary { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; background: var(--c-bg-surface); color: var(--c-text-secondary); border: 1px solid var(--c-border); border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 200ms ease; }
+    .btn-secondary:hover { color: var(--c-text); border-color: var(--c-text-muted); }
+    .btn-ghost { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; color: var(--c-text-muted); font-size: 13px; font-weight: 600; border-radius: 8px; border: none; background: none; font-family: inherit; cursor: pointer; transition: all 200ms ease; }
+    .btn-ghost:hover { color: var(--c-text-secondary); background: var(--c-bg-surface); }
+    .btn-danger-sm { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; background: var(--c-bg-surface); color: var(--c-text-muted); border: 1px solid var(--c-border); border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 200ms ease; }
+    .btn-danger-sm:hover { color: var(--c-text-secondary); border-color: var(--c-text-muted); }
+
+    .week-nav { display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem; }
+    .week-nav-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--c-bg-elevated); border: 1px solid var(--c-border); border-radius: 8px; color: var(--c-text-secondary); font-size: 20px; font-family: inherit; cursor: pointer; transition: all 200ms ease; }
+    .week-nav-btn:hover { border-color: var(--c-primary); color: var(--c-primary); }
+    .nav-arrow { font-size: 1.25rem; font-weight: 300; }
+    .week-info { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .week-label { font-size: 14px; font-weight: 600; color: var(--c-text); }
+    .week-range { font-size: 12px; color: var(--c-text-muted); }
+
+    .calendar-grid { background: var(--c-bg-elevated); border: 1px solid var(--c-border); border-radius: 12px; overflow: hidden; margin-bottom: 2rem; }
+    .day-headers { display: grid; grid-template-columns: 60px repeat(7, 1fr); border-bottom: 1px solid var(--c-border); }
+    .day-header-corner { border-right: 1px solid var(--c-border); }
+    .day-header { padding: 12px 8px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+    .day-header.today { background: rgba(200,255,0,0.04); }
+    .day-name { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-muted); }
+    .day-number { font-size: 16px; font-weight: 700; color: var(--c-text-secondary); }
+    .today-number { color: var(--c-primary); }
+
+    .time-grid { max-height: 500px; overflow-y: auto; }
+    .time-row { display: grid; grid-template-columns: 60px repeat(7, 1fr); border-bottom: 1px solid var(--c-border-subtle); }
+    .time-label { padding: 8px; font-size: 11px; font-weight: 500; color: var(--c-text-muted); text-align: right; padding-right: 12px; border-right: 1px solid var(--c-border); display: flex; align-items: flex-start; justify-content: flex-end; padding-top: 4px; font-variant-numeric: tabular-nums; }
+    .time-slot { min-height: 48px; padding: 4px; border-right: 1px solid var(--c-border-subtle); cursor: pointer; transition: background 200ms ease; }
+    .time-slot:hover { background: var(--c-bg-hover); }
+    .time-slot.today { background: rgba(200,255,0,0.01); }
+
+    .treino-card { padding: 4px 8px; background: rgba(200,255,0,0.08); border-left: 2px solid var(--c-primary); border-radius: 4px; cursor: pointer; transition: all 200ms ease; }
+    .treino-card:hover { background: rgba(200,255,0,0.12); }
+    .treino-card.concluido { background: rgba(161,161,170,0.08); border-left-color: var(--c-text-muted); }
+    .treino-card.cancelado { background: rgba(161,161,170,0.05); border-left-color: var(--c-text-dim); opacity: 0.5; }
+    .treino-aluno { display: block; font-size: 11px; font-weight: 600; color: var(--c-text); }
+    .treino-tipo { display: block; font-size: 10px; color: var(--c-text-muted); }
+
+    .history-section { background: var(--c-bg-elevated); border: 1px solid var(--c-border); border-radius: 12px; overflow: hidden; }
+    .section-header-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--c-border); }
+    .section-header-row h2 { font-size: 14px; font-weight: 600; color: var(--c-text); margin: 0; }
+    .count-badge { font-size: 11px; font-weight: 600; color: var(--c-text-muted); background: var(--c-bg-surface); padding: 4px 10px; border-radius: 4px; }
+    .history-list { max-height: 400px; overflow-y: auto; }
+    .history-item { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--c-border-subtle); cursor: pointer; transition: background 200ms ease; }
+    .history-item:hover { background: var(--c-bg-hover); }
+    .history-date { display: flex; flex-direction: column; align-items: flex-end; min-width: 80px; }
+    .history-day { font-size: 12px; font-weight: 600; color: var(--c-text-secondary); }
+    .history-time { font-size: 11px; color: var(--c-text-muted); font-variant-numeric: tabular-nums; }
+    .history-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .history-aluno { font-size: 13px; font-weight: 600; color: var(--c-text); }
+    .history-tipo { font-size: 12px; color: var(--c-text-muted); }
+
+    .status-badge { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; font-size: 11px; font-weight: 600; border-radius: 4px; }
+    .status-badge.agendado { background: rgba(200,255,0,0.1); color: var(--c-primary); }
+    .status-badge.concluido { background: rgba(161,161,170,0.1); color: var(--c-text-secondary); }
+    .status-badge.cancelado { background: rgba(161,161,170,0.06); color: var(--c-text-muted); }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; justify-content: flex-end; }
+    .modal-panel { width: 680px; max-width: 100%; height: 100vh; background: var(--c-bg); border-left: 1px solid var(--c-border); display: flex; flex-direction: column; animation: slideIn 200ms cubic-bezier(0.4,0,0.2,1); }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--c-border); }
+    .modal-header h2 { font-size: 16px; font-weight: 600; color: var(--c-text); margin: 0; }
+    .close-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--c-text-muted); font-size: 20px; border: none; background: none; cursor: pointer; transition: all 200ms ease; }
+    .close-btn:hover { background: var(--c-bg-surface); color: var(--c-text); }
+
+    .modal-tabs { display: flex; border-bottom: 1px solid var(--c-border); }
+    .tab-btn { flex: 1; padding: 12px; font-size: 13px; font-weight: 600; color: var(--c-text-muted); background: none; border: none; border-bottom: 2px solid transparent; font-family: inherit; cursor: pointer; transition: all 200ms ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .tab-btn:hover { color: var(--c-text-secondary); }
+    .tab-btn.active { color: var(--c-primary); border-bottom-color: var(--c-primary); }
+    .tab-count { font-size: 11px; font-weight: 600; background: rgba(200,255,0,0.12); color: var(--c-primary); padding: 2px 7px; border-radius: 10px; }
+
+    .modal-body { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    .form-section { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--c-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-select, .form-input, .form-textarea { width: 100%; padding: 10px 12px; background: var(--c-bg-surface); border: 1px solid var(--c-border); border-radius: 8px; color: var(--c-text); font-size: 13px; font-family: inherit; transition: border-color 200ms ease; }
+    .form-select:focus, .form-input:focus, .form-textarea:focus { border-color: var(--c-primary); outline: none; }
+    .form-textarea { resize: vertical; min-height: 60px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .aluno-info-card { padding: 12px; background: var(--c-bg-surface); border: 1px solid var(--c-border); border-radius: 8px; }
+    .aluno-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .aluno-info-item { display: flex; flex-direction: column; gap: 2px; }
+    .aluno-info-key { font-size: 11px; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .aluno-info-val { font-size: 13px; font-weight: 600; color: var(--c-text); }
+    .aluno-obs { font-size: 12px; color: var(--c-text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--c-border); }
+
+    .modal-actions { display: flex; gap: 8px; padding-top: 16px; border-top: 1px solid var(--c-border); }
+
+    .detail-grid { display: flex; flex-direction: column; gap: 0; }
+    .detail-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--c-border-subtle); }
+    .detail-label { font-size: 12px; color: var(--c-text-muted); }
+    .detail-value { font-size: 13px; font-weight: 600; color: var(--c-text); }
+    .detail-section { display: flex; flex-direction: column; gap: 8px; }
+    .section-label { font-size: 12px; font-weight: 600; color: var(--c-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .detail-desc { font-size: 13px; color: var(--c-text-secondary); line-height: 1.5; }
+    .exercises-list { display: flex; flex-direction: column; gap: 4px; }
+    .exercise-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--c-bg-surface); border: 1px solid var(--c-border); border-radius: 6px; }
+    .exercise-row-left { display: flex; align-items: center; gap: 10px; }
+    .exercise-index { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--c-text-muted); background: var(--c-bg-elevated); border-radius: 4px; }
+    .exercise-info { display: flex; flex-direction: column; gap: 1px; }
+    .ex-name { font-size: 13px; font-weight: 600; color: var(--c-text); }
+    .ex-group { font-size: 11px; color: var(--c-text-muted); }
+    .ex-detail { font-size: 12px; color: var(--c-text-secondary); font-variant-numeric: tabular-nums; }
+
+    .exercise-layout { display: flex; gap: 0; padding: 0; overflow: hidden; height: calc(100vh - 130px); }
+    .exercise-browser { width: 40%; border-right: 1px solid var(--c-border); display: flex; flex-direction: column; overflow-y: auto; }
+    .exercise-panel { width: 60%; display: flex; flex-direction: column; }
+    .exercise-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--c-border); }
+    .exercise-panel-title { font-size: 13px; font-weight: 600; color: var(--c-text); }
+    .exercise-panel-count { font-size: 11px; font-weight: 600; color: var(--c-primary); background: rgba(200,255,0,0.1); padding: 2px 8px; border-radius: 10px; }
+    .exercise-panel-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+    .exercise-search { width: 100%; padding: 10px 14px; background: var(--c-bg-surface); border: none; border-bottom: 1px solid var(--c-border); color: var(--c-text); font-size: 13px; font-family: inherit; }
+    .exercise-search:focus { outline: none; border-bottom-color: var(--c-primary); }
+    .exercise-search::placeholder { color: var(--c-text-dim); }
+
+    .grupo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px; }
+    .grupo-card { padding: 10px 8px; background: var(--c-bg-surface); border: 1px solid var(--c-border); border-radius: 8px; color: var(--c-text-secondary); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 200ms ease; text-align: center; }
+    .grupo-card:hover { border-color: var(--c-text-dim); color: var(--c-text); }
+    .grupo-card.active { border-color: var(--c-primary); color: var(--c-primary); background: rgba(200,255,0,0.06); }
+
+    .categoria-list { display: flex; flex-direction: column; padding: 0 12px; gap: 4px; }
+    .categoria-btn { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--c-bg-elevated); border: 1px solid var(--c-border); border-radius: 6px; color: var(--c-text-secondary); font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 200ms ease; }
+    .categoria-btn:hover { border-color: var(--c-text-dim); color: var(--c-text); }
+    .categoria-btn.active { border-color: var(--c-primary); color: var(--c-primary); }
+    .categoria-count { font-size: 10px; font-weight: 600; color: var(--c-text-dim); background: var(--c-bg-surface); padding: 2px 6px; border-radius: 4px; }
+
+    .exercicio-lib-list { display: flex; flex-direction: column; padding: 12px; gap: 4px; flex: 1; overflow-y: auto; }
+    .exercicio-lib-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 6px; transition: background 200ms ease; }
+    .exercicio-lib-item:hover { background: var(--c-bg-hover); }
+    .exercicio-lib-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .fav-btn { background: none; border: none; color: var(--c-text-dim); font-size: 14px; cursor: pointer; transition: color 200ms ease; padding: 0 2px; }
+    .fav-btn:hover, .fav-btn.favorited { color: var(--c-primary); }
+    .exercicio-lib-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .exercicio-lib-name { font-size: 12px; font-weight: 600; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exercicio-lib-meta { font-size: 10px; color: var(--c-text-dim); }
+    .add-ex-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: var(--c-bg-surface); border: 1px solid var(--c-border); border-radius: 6px; color: var(--c-primary); font-size: 16px; font-weight: 600; cursor: pointer; transition: all 200ms ease; flex-shrink: 0; }
+    .add-ex-btn:hover { background: rgba(200,255,0,0.1); border-color: var(--c-primary); }
+
+    .empty-lib { padding: 24px; text-align: center; }
+    .empty-lib p { font-size: 12px; color: var(--c-text-dim); }
+
+    .empty-exercises { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; gap: 6px; }
+    .empty-exercises .empty-icon { font-size: 2rem; color: var(--c-text-dim); }
+    .empty-exercises p { font-size: 13px; font-weight: 600; color: var(--c-text-muted); margin: 0; }
+    .empty-hint { font-size: 11px; color: var(--c-text-dim); }
+
+    .exercise-edit-card { background: var(--c-bg-surface); border: 1px solid var(--c-border); border-radius: 8px; overflow: hidden; }
+    .exercise-edit-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--c-border-subtle); }
+    .exercise-edit-left { display: flex; align-items: center; gap: 10px; }
+    .exercise-edit-index { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--c-primary); background: rgba(200,255,0,0.1); border-radius: 4px; }
+    .exercise-edit-name { font-size: 12px; font-weight: 600; color: var(--c-text); display: block; }
+    .exercise-edit-group { font-size: 10px; color: var(--c-text-dim); display: block; }
+    .exercise-edit-actions { display: flex; gap: 4px; }
+    .move-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--c-border); border-radius: 4px; color: var(--c-text-muted); font-size: 8px; cursor: pointer; transition: all 200ms ease; }
+    .move-btn:hover:not(:disabled) { border-color: var(--c-text-dim); color: var(--c-text); }
+    .move-btn:disabled { opacity: 0.3; cursor: default; }
+    .del-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--c-border); border-radius: 4px; color: var(--c-text-muted); font-size: 14px; cursor: pointer; transition: all 200ms ease; }
+    .del-btn:hover { border-color: var(--c-text-dim); color: var(--c-text); }
+
+    .exercise-edit-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 12px; }
+    .ex-field { display: flex; flex-direction: column; gap: 3px; }
+    .ex-field-label { font-size: 10px; font-weight: 600; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .ex-field-input { width: 100%; padding: 6px 8px; background: var(--c-bg-elevated); border: 1px solid var(--c-border); border-radius: 4px; color: var(--c-text); font-size: 12px; font-family: inherit; text-align: center; }
+    .ex-field-input:focus { border-color: var(--c-primary); outline: none; }
+
+    .exercise-edit-obs { padding: 0 12px 10px; }
+    .ex-obs-input { width: 100%; padding: 6px 8px; background: var(--c-bg-elevated); border: 1px solid var(--c-border); border-radius: 4px; color: var(--c-text-secondary); font-size: 11px; font-family: inherit; }
+    .ex-obs-input:focus { border-color: var(--c-primary); outline: none; }
+    .ex-obs-input::placeholder { color: var(--c-text-dim); }
+
+    .empty-state { padding: 48px; text-align: center; }
+    .empty-state .empty-icon { font-size: 2rem; color: var(--c-text-dim); display: block; margin-bottom: 8px; }
+    .empty-state p { font-size: 13px; color: var(--c-text-muted); margin: 0; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--c-text-dim); }
+
+    @media (max-width: 768px) {
+      .agenda-page { padding: 1rem; }
+      .page-header { flex-direction: column; gap: 1rem; }
+      .day-headers, .time-row { grid-template-columns: 50px repeat(7, 1fr); }
+      .day-name { font-size: 9px; }
+      .day-number { font-size: 13px; }
+      .modal-panel { width: 100%; }
+      .exercise-layout { flex-direction: column; }
+      .exercise-browser, .exercise-panel { width: 100%; }
+      .exercise-browser { max-height: 50vh; border-right: none; border-bottom: 1px solid var(--c-border); }
+      .grupo-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  `]
+})
+export class AgendaComponent implements OnInit {
+  private router = inject(Router);
+  showModal = signal(false);
+  modalMode = signal<'create' | 'edit' | 'detail'>('create');
+  activeTab = signal<'info' | 'exercises'>('info');
+  selectedTreino = signal<Treino | null>(null);
+  selectedAluno = signal<Aluno | null>(null);
+  currentWeekStart = signal<Date>(new Date());
+  searchExerciseTerm = signal('');
+  selectedGrupoMuscular = signal<string | null>(null);
+  selectedCategoria = signal<string | null>(null);
+  favoriteIds = signal<Set<string>>(new Set());
+
+  formData = {
+    alunoId: '',
+    tipo: '',
+    descricao: '',
+    observacoes: '',
+    status: 'Agendado',
+    data: '',
+    exercicios: [] as ExercicioTreino[]
+  };
+
+  hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+
+  gruposMusculares = ['Peito', 'Costas', 'Ombros', 'Biceps', 'Triceps', 'Pernas', 'Abdomen', 'Cardio'];
+
+  alunos: Aluno[] = [];
+
+  exercicioLib: ExercicioLib[] = [
+    { id: 'pe01', nome: 'Supino Reto Barra', grupoMuscular: 'Peito', categoria: 'Supinos', favorito: false },
+    { id: 'pe02', nome: 'Supino Reto Halteres', grupoMuscular: 'Peito', categoria: 'Supinos', favorito: false },
+    { id: 'pe03', nome: 'Supino Reto Maquina', grupoMuscular: 'Peito', categoria: 'Supinos', favorito: false },
+    { id: 'pe04', nome: 'Supino Inclinado Barra', grupoMuscular: 'Peito', categoria: 'Supinos', favorito: true },
+    { id: 'pe05', nome: 'Supino Inclinado Halteres', grupoMuscular: 'Peito', categoria: 'Supinos', favorito: true },
+    { id: 'pe06', nome: 'Supino Declinado Smith', grupoMuscular: 'Peito', categoria: 'Supinos', favorito: false },
+    { id: 'pe07', nome: 'Crucifixo Reto', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe08', nome: 'Crucifixo Inclinado', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe09', nome: 'Peck Deck', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: true },
+    { id: 'pe10', nome: 'Fly Maquina', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe11', nome: 'Fly Cabo', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe12', nome: 'Cross Over Alto', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe13', nome: 'Cross Over Medio', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe14', nome: 'Cross Over Baixo', grupoMuscular: 'Peito', categoria: 'Fly/Crucifixo', favorito: false },
+    { id: 'pe15', nome: 'Flexao Tradicional', grupoMuscular: 'Peito', categoria: 'Peso Corporal', favorito: false },
+    { id: 'pe16', nome: 'Flexao Inclinada', grupoMuscular: 'Peito', categoria: 'Peso Corporal', favorito: false },
+    { id: 'pe17', nome: 'Flexao Declinada', grupoMuscular: 'Peito', categoria: 'Peso Corporal', favorito: false },
+    { id: 'pe18', nome: 'Flexao Diamante', grupoMuscular: 'Peito', categoria: 'Peso Corporal', favorito: false },
+    { id: 'pe19', nome: 'Paralelas', grupoMuscular: 'Peito', categoria: 'Outros', favorito: false },
+    { id: 'pe20', nome: 'Pullover', grupoMuscular: 'Peito', categoria: 'Outros', favorito: false },
+    { id: 'pe21', nome: 'Pullover Maquina', grupoMuscular: 'Peito', categoria: 'Outros', favorito: false },
+
+    { id: 'co01', nome: 'Puxada Frontal', grupoMuscular: 'Costas', categoria: 'Puxadas', favorito: true },
+    { id: 'co02', nome: 'Puxada Pronada', grupoMuscular: 'Costas', categoria: 'Puxadas', favorito: false },
+    { id: 'co03', nome: 'Puxada Supinada', grupoMuscular: 'Costas', categoria: 'Puxadas', favorito: false },
+    { id: 'co04', nome: 'Puxada Triangulo', grupoMuscular: 'Costas', categoria: 'Puxadas', favorito: false },
+    { id: 'co05', nome: 'Remada Curvada', grupoMuscular: 'Costas', categoria: 'Remadas', favorito: true },
+    { id: 'co06', nome: 'Remada Cavalinho', grupoMuscular: 'Costas', categoria: 'Remadas', favorito: false },
+    { id: 'co07', nome: 'Remada Unilateral', grupoMuscular: 'Costas', categoria: 'Remadas', favorito: false },
+    { id: 'co08', nome: 'Remada Maquina', grupoMuscular: 'Costas', categoria: 'Remadas', favorito: false },
+    { id: 'co09', nome: 'Barra Fixa Pronada', grupoMuscular: 'Costas', categoria: 'Peso Corporal', favorito: false },
+    { id: 'co10', nome: 'Barra Fixa Supinada', grupoMuscular: 'Costas', categoria: 'Peso Corporal', favorito: false },
+    { id: 'co11', nome: 'Dominada', grupoMuscular: 'Costas', categoria: 'Peso Corporal', favorito: true },
+    { id: 'co12', nome: 'Pullover Costas', grupoMuscular: 'Costas', categoria: 'Outros', favorito: false },
+    { id: 'co13', nome: 'Pulldown', grupoMuscular: 'Costas', categoria: 'Outros', favorito: false },
+
+    { id: 'om01', nome: 'Elevacao Lateral Halteres', grupoMuscular: 'Ombros', categoria: 'Laterais', favorito: true },
+    { id: 'om02', nome: 'Elevacao Lateral Maquina', grupoMuscular: 'Ombros', categoria: 'Laterais', favorito: false },
+    { id: 'om03', nome: 'Elevacao Lateral Cabo', grupoMuscular: 'Ombros', categoria: 'Laterais', favorito: false },
+    { id: 'om04', nome: 'Elevacao Frontal Halteres', grupoMuscular: 'Ombros', categoria: 'Frontais', favorito: false },
+    { id: 'om05', nome: 'Elevacao Frontal Barra', grupoMuscular: 'Ombros', categoria: 'Frontais', favorito: false },
+    { id: 'om06', nome: 'Elevacao Frontal Cabo', grupoMuscular: 'Ombros', categoria: 'Frontais', favorito: false },
+    { id: 'om07', nome: 'Face Pull', grupoMuscular: 'Ombros', categoria: 'Traseira', favorito: true },
+    { id: 'om08', nome: 'Elevacao Posterior', grupoMuscular: 'Ombros', categoria: 'Traseira', favorito: false },
+    { id: 'om09', nome: 'Reverse Fly', grupoMuscular: 'Ombros', categoria: 'Traseira', favorito: false },
+    { id: 'om10', nome: 'Press Militar Barra', grupoMuscular: 'Ombros', categoria: 'Press', favorito: true },
+    { id: 'om11', nome: 'Press Militar Halteres', grupoMuscular: 'Ombros', categoria: 'Press', favorito: false },
+    { id: 'om12', nome: 'Press Militar Maquina', grupoMuscular: 'Ombros', categoria: 'Press', favorito: false },
+
+    { id: 'bi01', nome: 'Rosca Direta Barra', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: true },
+    { id: 'bi02', nome: 'Rosca Direta Halteres', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: false },
+    { id: 'bi03', nome: 'Rosca Scott', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: false },
+    { id: 'bi04', nome: 'Rosca Martelo', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: true },
+    { id: 'bi05', nome: 'Rosca Concentrada', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: false },
+    { id: 'bi06', nome: 'Rosca Cabo', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: false },
+    { id: 'bi07', nome: 'Rosca Alternada', grupoMuscular: 'Biceps', categoria: 'Roscas', favorito: false },
+
+    { id: 'tr01', nome: 'Triceps Pulley', grupoMuscular: 'Triceps', categoria: 'Polia', favorito: true },
+    { id: 'tr02', nome: 'Triceps Corda', grupoMuscular: 'Triceps', categoria: 'Polia', favorito: false },
+    { id: 'tr03', nome: 'Triceps Barra', grupoMuscular: 'Triceps', categoria: 'Polia', favorito: false },
+    { id: 'tr04', nome: 'Triceps Testa', grupoMuscular: 'Triceps', categoria: 'Halteres', favorito: false },
+    { id: 'tr05', nome: 'Triceps Frances', grupoMuscular: 'Triceps', categoria: 'Halteres', favorito: false },
+    { id: 'tr06', nome: 'Triceps Coice', grupoMuscular: 'Triceps', categoria: 'Halteres', favorito: false },
+    { id: 'tr07', nome: 'Mergulho', grupoMuscular: 'Triceps', categoria: 'Peso Corporal', favorito: true },
+    { id: 'tr08', nome: 'Flexao Diamante Triceps', grupoMuscular: 'Triceps', categoria: 'Peso Corporal', favorito: false },
+
+    { id: 'pe22', nome: 'Agachamento Livre', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: true },
+    { id: 'pe23', nome: 'Agachamento Smith', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: false },
+    { id: 'pe24', nome: 'Leg Press 45', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: true },
+    { id: 'pe25', nome: 'Leg Press 90', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: false },
+    { id: 'pe26', nome: 'Cadeira Extensora', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: false },
+    { id: 'pe27', nome: 'Agachamento Bulgaro', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: false },
+    { id: 'pe28', nome: 'Cadeira Hack', grupoMuscular: 'Pernas', categoria: 'Quadriceps', favorito: false },
+    { id: 'pe29', nome: 'Mesa Flexora', grupoMuscular: 'Pernas', categoria: 'Posterior', favorito: true },
+    { id: 'pe30', nome: 'Cadeira Flexora', grupoMuscular: 'Pernas', categoria: 'Posterior', favorito: false },
+    { id: 'pe31', nome: 'Stiff', grupoMuscular: 'Pernas', categoria: 'Posterior', favorito: false },
+    { id: 'pe32', nome: 'RDL', grupoMuscular: 'Pernas', categoria: 'Posterior', favorito: false },
+    { id: 'pe33', nome: 'Cadeira Adutora', grupoMuscular: 'Pernas', categoria: 'Posterior', favorito: false },
+    { id: 'pe34', nome: 'Hip Thrust', grupoMuscular: 'Pernas', categoria: 'Gluteos', favorito: true },
+    { id: 'pe35', nome: 'Abducao', grupoMuscular: 'Pernas', categoria: 'Gluteos', favorito: false },
+    { id: 'pe36', nome: 'Elevacao Pelvica', grupoMuscular: 'Pernas', categoria: 'Gluteos', favorito: false },
+    { id: 'pe37', nome: 'Panturrilha Sentado', grupoMuscular: 'Pernas', categoria: 'Panturrilha', favorito: false },
+    { id: 'pe38', nome: 'Panturrilha em Pe', grupoMuscular: 'Pernas', categoria: 'Panturrilha', favorito: true },
+    { id: 'pe39', nome: 'Panturrilha No Leg', grupoMuscular: 'Pernas', categoria: 'Panturrilha', favorito: false },
+
+    { id: 'ab01', nome: 'Ab Crunch Maquina', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: false },
+    { id: 'ab02', nome: 'Abdominal Reto', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: true },
+    { id: 'ab03', nome: 'Prancha', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: true },
+    { id: 'ab04', nome: 'Elevacao Pernas', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: false },
+    { id: 'ab05', nome: 'Russian Twist', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: false },
+    { id: 'ab06', nome: 'Bicicleta', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: false },
+    { id: 'ab07', nome: 'Woodchop', grupoMuscular: 'Abdomen', categoria: 'Abdomen', favorito: false },
+
+    { id: 'ca01', nome: 'Esteira', grupoMuscular: 'Cardio', categoria: 'Cardio', favorito: true },
+    { id: 'ca02', nome: 'Bicicleta Ergometrica', grupoMuscular: 'Cardio', categoria: 'Cardio', favorito: false },
+    { id: 'ca03', nome: 'Elipitico', grupoMuscular: 'Cardio', categoria: 'Cardio', favorito: false },
+    { id: 'ca04', nome: 'Remador', grupoMuscular: 'Cardio', categoria: 'Cardio', favorito: false },
+    { id: 'ca05', nome: 'Escada', grupoMuscular: 'Cardio', categoria: 'Cardio', favorito: false },
+    { id: 'ca06', nome: 'Air Bike', grupoMuscular: 'Cardio', categoria: 'Cardio', favorito: false }
+  ];
+
+  treinos = signal<Treino[]>([]);
+
+  weekDays = computed(() => {
+    const start = this.currentWeekStart();
+    const days: DayColumn[] = [];
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      const dateNoTime = new Date(date);
+      dateNoTime.setHours(0, 0, 0, 0);
+      days.push({
+        date,
+        dayName: dayNames[date.getDay()],
+        dayNumber: date.getDate(),
+        isToday: dateNoTime.getTime() === today.getTime()
+      });
+    }
+    return days;
+  });
+
+  weekLabel = computed(() => {
+    const start = this.currentWeekStart();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return `Semana ${start.getDate()} ${start.toLocaleDateString('pt-BR', { month: 'short' })} - ${end.getDate()} ${end.toLocaleDateString('pt-BR', { month: 'short' })}`;
+  });
+
+  weekRange = computed(() => {
+    const start = this.currentWeekStart();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return `${this.formatDate(start)} ate ${this.formatDate(end)}`;
+  });
+
+  ngOnInit(): void {
+    this.goToToday();
+    this.generateSampleTreinos();
+  }
+
+  private generateSampleTreinos(): void {
+  }
+
+  private formatDate(date: Date): string {
+    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+  }
+
+  goToToday(): void {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const start = new Date(today);
+    start.setDate(today.getDate() - dayOfWeek);
+    start.setHours(0, 0, 0, 0);
+    this.currentWeekStart.set(start);
+  }
+
+  previousWeek(): void {
+    const current = this.currentWeekStart();
+    const prev = new Date(current);
+    prev.setDate(current.getDate() - 7);
+    this.currentWeekStart.set(prev);
+  }
+
+  nextWeek(): void {
+    const current = this.currentWeekStart();
+    const next = new Date(current);
+    next.setDate(current.getDate() + 7);
+    this.currentWeekStart.set(next);
+  }
+
+  getTreinosForSlot(date: Date, hour: string): Treino[] {
+    const dateStr = this.formatDate(date);
+    return this.treinos().filter(t => t.data === dateStr && t.horario === hour);
+  }
+
+  openSlot(day: DayColumn, hour: string): void {
+    const dateStr = this.formatDate(day.date);
+    this.router.navigate(['/professores/treinos/criar'], {
+      queryParams: { data: dateStr, horario: hour }
+    });
+  }
+
+  openNewTraining(): void {
+    this.router.navigate(['/professores/treinos/criar']);
+  }
+
+  openTraining(treino: Treino, event: Event): void {
+    event.stopPropagation();
+    this.selectedTreino.set(treino);
+    this.modalMode.set('detail');
+    this.showModal.set(true);
+  }
+
+  closeModal(): void {
+    this.showModal.set(false);
+  }
+
+  onAlunoChange(): void {
+    const aluno = this.alunos.find(a => a.id === this.formData.alunoId);
+    this.selectedAluno.set(aluno || null);
+  }
+
+  toggleGrupoMuscular(grupo: string): void {
+    if (this.selectedGrupoMuscular() === grupo) {
+      this.selectedGrupoMuscular.set(null);
+      this.selectedCategoria.set(null);
+    } else {
+      this.selectedGrupoMuscular.set(grupo);
+      this.selectedCategoria.set(null);
+    }
+  }
+
+  toggleCategoria(categoria: string): void {
+    if (this.selectedCategoria() === categoria) {
+      this.selectedCategoria.set(null);
+    } else {
+      this.selectedCategoria.set(categoria);
+    }
+  }
+
+  getCategoriasForGrupo(grupo: string): string[] {
+    const cats = new Set(this.exercicioLib.filter(e => e.grupoMuscular === grupo).map(e => e.categoria));
+    return Array.from(cats);
+  }
+
+  getExerciciosForCategoria(grupo: string, categoria: string): ExercicioLib[] {
+    return this.exercicioLib.filter(e => e.grupoMuscular === grupo && e.categoria === categoria);
+  }
+
+  getFilteredExercicios(): ExercicioLib[] {
+    const grupo = this.selectedGrupoMuscular();
+    const cat = this.selectedCategoria();
+    const term = this.searchExerciseTerm().toLowerCase().trim();
+
+    let list = this.exercicioLib;
+
+    if (grupo) {
+      list = list.filter(e => e.grupoMuscular === grupo);
+    }
+    if (cat) {
+      list = list.filter(e => e.categoria === cat);
+    }
+    if (term) {
+      list = list.filter(e => e.nome.toLowerCase().includes(term) || e.grupoMuscular.toLowerCase().includes(term) || e.categoria.toLowerCase().includes(term));
+    }
+
+    const favs = list.filter(e => e.favorito);
+    const nonFavs = list.filter(e => !e.favorito);
+    return [...favs, ...nonFavs];
+  }
+
+  addExercicioFromLib(exercicio: ExercicioLib): void {
+    const newEx: ExercicioTreino = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      nome: exercicio.nome,
+      grupoMuscular: exercicio.grupoMuscular,
+      series: 3,
+      repeticoes: '12',
+      carga: '',
+      descanso: '60s',
+      observacoes: ''
+    };
+    this.formData.exercicios.push(newEx);
+  }
+
+  removeExercicio(index: number): void {
+    this.formData.exercicios.splice(index, 1);
+  }
+
+  moveExercicioUp(index: number): void {
+    if (index <= 0) return;
+    const temp = this.formData.exercicios[index];
+    this.formData.exercicios[index] = this.formData.exercicios[index - 1];
+    this.formData.exercicios[index - 1] = temp;
+  }
+
+  moveExercicioDown(index: number): void {
+    if (index >= this.formData.exercicios.length - 1) return;
+    const temp = this.formData.exercicios[index];
+    this.formData.exercicios[index] = this.formData.exercicios[index + 1];
+    this.formData.exercicios[index + 1] = temp;
+  }
+
+  toggleFavorite(exercicioId: string): void {
+    const favs = new Set(this.favoriteIds());
+    const ex = this.exercicioLib.find(e => e.id === exercicioId);
+    if (!ex) return;
+
+    if (ex.favorito) {
+      ex.favorito = false;
+      favs.delete(exercicioId);
+    } else {
+      ex.favorito = true;
+      favs.add(exercicioId);
+    }
+    this.favoriteIds.set(favs);
+  }
+
+  saveTraining(): void {
+    if (!this.formData.alunoId || !this.formData.tipo) return;
+    const aluno = this.alunos.find(a => a.id === this.formData.alunoId);
+    if (!aluno) return;
+
+    if (this.modalMode() === 'edit' && this.selectedTreino()) {
+      this.treinos.update(list => list.map(t =>
+        t.id === this.selectedTreino()!.id
+          ? {
+              ...t,
+              alunoId: this.formData.alunoId,
+              alunoNome: aluno.nome,
+              tipo: this.formData.tipo,
+              descricao: this.formData.descricao,
+              observacoes: this.formData.observacoes,
+              status: this.formData.status as Treino['status'],
+              exercicios: [...this.formData.exercicios]
+            }
+          : t
+      ));
+    } else {
+      const newTreino: Treino = {
+        id: Date.now().toString(),
+        alunoId: this.formData.alunoId,
+        alunoNome: aluno.nome,
+        data: this.formData.data || this.formatDate(new Date()),
+        horario: '08:00',
+        tipo: this.formData.tipo,
+        descricao: this.formData.descricao,
+        observacoes: this.formData.observacoes,
+        status: this.formData.status as Treino['status'],
+        exercicios: [...this.formData.exercicios]
+      };
+      this.treinos.update(list => [newTreino, ...list]);
+    }
+    this.closeModal();
+  }
+
+  editFromDetail(): void {
+    const treino = this.selectedTreino();
+    if (!treino) return;
+    this.formData = {
+      alunoId: treino.alunoId,
+      tipo: treino.tipo,
+      descricao: treino.descricao,
+      observacoes: treino.observacoes,
+      status: treino.status,
+      data: treino.data,
+      exercicios: treino.exercicios.map(e => ({ ...e }))
+    };
+    this.onAlunoChange();
+    this.modalMode.set('edit');
+    this.activeTab.set('info');
+  }
+
+  duplicateTraining(): void {
+    const treino = this.selectedTreino();
+    if (!treino) return;
+    const newTreino: Treino = {
+      ...treino,
+      id: Date.now().toString(),
+      status: 'Agendado',
+      exercicios: treino.exercicios.map(e => ({ ...e, id: Date.now().toString() + Math.random().toString(36).substr(2, 5) }))
+    };
+    this.treinos.update(list => [newTreino, ...list]);
+    this.closeModal();
+  }
+
+  deleteTraining(): void {
+    const treino = this.selectedTreino();
+    if (!treino) return;
+    this.treinos.update(list => list.filter(t => t.id !== treino.id));
+    this.closeModal();
+  }
+}
