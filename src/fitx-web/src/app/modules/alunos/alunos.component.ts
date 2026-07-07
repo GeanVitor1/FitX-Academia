@@ -61,13 +61,6 @@ import { AlunoDto, CreateAlunoDto, UpdateAlunoDto } from '../../core/models/mode
               <input type="email" [(ngModel)]="form.email" placeholder="email@exemplo.com"
                 style="width: 100%; padding: 0.625rem 0.75rem; background: #18181b; border: 1px solid #1e1e22; border-radius: 0.5rem; color: #fafafa; font-size: 0.875rem; box-sizing: border-box;">
             </div>
-            @if (!editingId()) {
-              <div>
-                <label style="display: block; font-size: 0.75rem; color: #a1a1aa; margin-bottom: 0.5rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Senha</label>
-                <input type="password" [(ngModel)]="form.password" placeholder="Senha inicial"
-                  style="width: 100%; padding: 0.625rem 0.75rem; background: #18181b; border: 1px solid #1e1e22; border-radius: 0.5rem; color: #fafafa; font-size: 0.875rem; box-sizing: border-box;">
-              </div>
-            }
             <div>
               <label style="display: block; font-size: 0.75rem; color: #a1a1aa; margin-bottom: 0.5rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Telefone</label>
               <input type="text" [(ngModel)]="form.telefone" placeholder="(11) 99999-9999"
@@ -153,7 +146,7 @@ export class AlunosComponent implements OnInit {
   loading = signal(false);
   filtro = '';
 
-  form = { nome: '', email: '', password: '', telefone: '' };
+  form = { nome: '', email: '', telefone: '' };
   alunos = signal<AlunoDto[]>([]);
   filtrados = signal<AlunoDto[]>([]);
 
@@ -187,7 +180,7 @@ export class AlunosComponent implements OnInit {
         error: () => this.toast.error('Erro ao atualizar aluno')
       });
     } else {
-      const dto: CreateAlunoDto = { nome: this.form.nome, email: this.form.email, password: this.form.password || '123456', telefone: this.form.telefone };
+      const dto: CreateAlunoDto = { nome: this.form.nome, email: this.form.email, password: '123456', telefone: this.form.telefone };
       this.alunosService.create(dto).subscribe({
         next: () => { this.toast.success('Aluno criado'); this.loadAlunos(); },
         error: () => this.toast.error('Erro ao criar aluno')
@@ -195,7 +188,7 @@ export class AlunosComponent implements OnInit {
     }
     this.showForm.set(false);
     this.editingId.set(null);
-    this.form = { nome: '', email: '', password: '', telefone: '' };
+    this.form = { nome: '', email: '', telefone: '' };
   }
 
   toggleStatus(aluno: AlunoDto): void {

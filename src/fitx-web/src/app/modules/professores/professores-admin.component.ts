@@ -68,13 +68,6 @@ import { ProfessorDto, CreateProfessorDto, UpdateProfessorDto } from '../../core
               <input type="email" [(ngModel)]="form.email" placeholder="email@fitx.com"
                 style="padding: 0.625rem 0.75rem; background: #18181b; border: 1px solid #1e1e22; border-radius: 0.5rem; color: #fff; font-size: 0.875rem; font-family: inherit;">
             </div>
-            @if (!editingId()) {
-              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <label style="font-size: 0.8125rem; color: #a1a1aa; font-weight: 500;">Senha</label>
-                <input type="password" [(ngModel)]="form.password" placeholder="Senha inicial"
-                  style="padding: 0.625rem 0.75rem; background: #18181b; border: 1px solid #1e1e22; border-radius: 0.5rem; color: #fff; font-size: 0.875rem; font-family: inherit;">
-              </div>
-            }
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <label style="font-size: 0.8125rem; color: #a1a1aa; font-weight: 500;">Especialidade</label>
               <input type="text" [(ngModel)]="form.especialidade" placeholder="Ex: Musculacao"
@@ -159,7 +152,7 @@ export class ProfessoresAdminComponent implements OnInit {
   editingId = signal<string | null>(null);
   loading = signal(false);
   professores = signal<ProfessorDto[]>([]);
-  form = { nome: '', email: '', password: '', especialidade: '', cref: '', bio: '' };
+  form = { nome: '', email: '', especialidade: '', cref: '', bio: '' };
 
   ngOnInit(): void {
     this.loadProfessores();
@@ -178,7 +171,7 @@ export class ProfessoresAdminComponent implements OnInit {
 
   editar(prof: ProfessorDto): void {
     this.editingId.set(prof.id);
-    this.form = { nome: prof.nome, email: prof.email, password: '', especialidade: prof.especialidade || '', cref: prof.cref || '', bio: prof.bio || '' };
+    this.form = { nome: prof.nome, email: prof.email, especialidade: prof.especialidade || '', cref: prof.cref || '', bio: prof.bio || '' };
     this.showForm.set(true);
   }
 
@@ -194,7 +187,7 @@ export class ProfessoresAdminComponent implements OnInit {
       });
     } else {
       const dto: CreateProfessorDto = {
-        nome: this.form.nome, email: this.form.email, password: this.form.password || '123456',
+        nome: this.form.nome, email: this.form.email, password: '123456',
         especialidade: this.form.especialidade, cref: this.form.cref, bio: this.form.bio
       };
       this.professoresService.create(dto).subscribe({
@@ -215,6 +208,6 @@ export class ProfessoresAdminComponent implements OnInit {
   cancelar(): void {
     this.showForm.set(false);
     this.editingId.set(null);
-    this.form = { nome: '', email: '', password: '', especialidade: '', cref: '', bio: '' };
+    this.form = { nome: '', email: '', especialidade: '', cref: '', bio: '' };
   }
 }
