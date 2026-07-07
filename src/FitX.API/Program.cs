@@ -1,19 +1,21 @@
 using System.Text.Json.Serialization;
 using FitX.API.Middlewares;
+using FitX.Domain.Entities;
+using FitX.Domain.Enums;
+using FluentValidation.AspNetCore;
 using FitX.Application;
 using FitX.Identity;
 using FitX.Infrastructure;
 using FitX.Infrastructure.Hubs;
 using FitX.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configuration
-builder.Services.Configure<FitX.Identity.Models.JwtSettings>(
-    builder.Configuration.GetSection(FitX.Identity.Models.JwtSettings.SectionName));
-
 // Persistence
 builder.Services.AddPersistence(builder.Configuration);
 
@@ -27,6 +29,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.SuppressModelStateInvalidFilter = true;
 });
+
+builder.Services.AddFluentValidationAutoValidation();
 
 // Infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -48,7 +52,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
+        policy.SetIsOriginAllowed(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.Host == "localhost")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -112,8 +116,77 @@ app.UseCors("AllowAngular");
 app.UseAuthentication();
 app.UseAuthorization();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ChatHub>("/hubs/chat");
+
+// Apply pending migrations
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FitX.Persistence.FitXDbContext>();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch
+    {
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS Equipamentos (
+                Id TEXT PRIMARY KEY,
+                Nome TEXT NOT NULL,
+                Categoria TEXT NOT NULL,
+                Localizacao TEXT,
+                Status INTEGER NOT NULL,
+                UltimaManutencao TEXT,
+                CriadoEm TEXT NOT NULL,
+                AtualizadoEm TEXT,
+                Ativo INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS IX_Equipamentos_Categoria ON Equipamentos(Categoria);
+            CREATE INDEX IF NOT EXISTS IX_Equipamentos_Nome ON Equipamentos(Nome);
+            CREATE INDEX IF NOT EXISTS IX_Equipamentos_Status ON Equipamentos(Status);
+        ");
+    }
+}
+
+// Auto-seed demo users on startup
+using (var scope = app.Services.CreateScope())
+{
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
+
+    var demoLogins = new (string email, string nome, UserRole role, string password)[]
+    {
+        ("admin@fitx.com",      "Admin FitX",         UserRole.Admin,         "1234"),
+        ("prof@fitx.com",       "Professor FitX",     UserRole.Professor,     "1234"),
+        ("aluno@fitx.com",      "Aluno FitX",         UserRole.Aluno,         "1234"),
+        ("recepcao@fitx.com",   "Maria Recepcao",     UserRole.Recepcionista, "1234"),
+        ("financeiro@fitx.com", "Pedro Financeiro",   UserRole.Financeiro,    "1234")
+    };
+
+    foreach (var (email, nome, role, password) in demoLogins)
+    {
+        var existing = await userManager.FindByEmailAsync(email);
+        if (existing is not null)
+        {
+            await userManager.DeleteAsync(existing);
+        }
+
+        var user = new Usuario
+        {
+            UserName = email,
+            Nome = nome,
+            Email = email,
+            Role = role,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow
+        };
+        await userManager.CreateAsync(user, password);
+    }
+}
 
 app.Run();
