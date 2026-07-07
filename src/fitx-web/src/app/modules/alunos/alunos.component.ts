@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AlunosService } from '../../core/services/alunos.service';
 import { ToastService } from '../../shared/services/toast.service';
 import { AlunoDto, CreateAlunoDto, UpdateAlunoDto } from '../../core/models/models';
@@ -158,7 +159,7 @@ export class AlunosComponent implements OnInit {
     this.loading.set(true);
     this.alunosService.getAll().subscribe({
       next: (res) => { if (res.success && res.data) { this.alunos.set(res.data); this.aplicarFiltro(); } this.loading.set(false); },
-      error: () => { this.loading.set(false); this.toast.error('Erro ao carregar alunos'); }
+      error: (err: HttpErrorResponse) => { this.loading.set(false); this.toast.error(this.extrairErro(err)); }
     });
   }
 
@@ -177,13 +178,13 @@ export class AlunosComponent implements OnInit {
       const dto: UpdateAlunoDto = { telefone: this.form.telefone };
       this.alunosService.update(this.editingId()!, dto).subscribe({
         next: () => { this.toast.success('Aluno atualizado'); this.loadAlunos(); },
-        error: () => this.toast.error('Erro ao atualizar aluno')
+        error: (err: HttpErrorResponse) => this.toast.error(this.extrairErro(err))
       });
     } else {
       const dto: CreateAlunoDto = { nome: this.form.nome, email: this.form.email, password: '123456', telefone: this.form.telefone };
       this.alunosService.create(dto).subscribe({
         next: () => { this.toast.success('Aluno criado'); this.loadAlunos(); },
-        error: () => this.toast.error('Erro ao criar aluno')
+        error: (err: HttpErrorResponse) => this.toast.error(this.extrairErro(err))
       });
     }
     this.showForm.set(false);
@@ -195,7 +196,13 @@ export class AlunosComponent implements OnInit {
     const novoStatus = aluno.status === 'Ativo' ? 'Inativo' : 'Ativo';
     this.alunosService.update(aluno.id, { status: novoStatus as any }).subscribe({
       next: () => { this.toast.success('Status alterado'); this.loadAlunos(); },
-      error: () => this.toast.error('Erro ao alterar status')
+      error: (err: HttpErrorResponse) => this.toast.error(this.extrairErro(err))
     });
+  }
+
+  private extrairErro(err: HttpErrorResponse): string {
+    if (err.error?.errors?.length) return err.error.errors[0];
+    if (err.error?.message) return err.error.message;
+    return err.message || 'Erro desconhecido';
   }
 }
