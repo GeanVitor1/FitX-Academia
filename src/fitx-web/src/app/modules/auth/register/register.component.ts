@@ -13,7 +13,7 @@ import { ToastService } from '../../../shared/services/toast.service';
     <div class="auth-page">
       <div class="auth-image-side">
         <div class="image-overlay"></div>
-        <img src="public/images/auth/gym.jpg" alt="Academia" class="bg-image">
+        <img src="images/auth/gym.jpg" alt="Academia" class="bg-image">
         <div class="image-content">
           <div class="brand">
             <span class="brand-icon">💪</span>
