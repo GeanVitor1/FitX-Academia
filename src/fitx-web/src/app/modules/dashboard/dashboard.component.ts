@@ -233,7 +233,7 @@ export class DashboardComponent implements OnInit {
     this.loading.set(true);
     this.dashboardService.getDashboard().subscribe({
       next: (res) => { if (res.success && res.data) this.dashboardData.set(res.data); this.loading.set(false); },
-      error: () => { this.loading.set(false); }
+      error: () => { this.loading.set(false); this.toast.error('Erro ao carregar dashboard'); }
     });
   }
 

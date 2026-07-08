@@ -334,6 +334,7 @@ export interface UpdateUsuarioDto {
   nome?: string;
   telefone?: string;
   avatar?: string;
+  ativo?: boolean;
 }
 
 export interface DashboardDto {

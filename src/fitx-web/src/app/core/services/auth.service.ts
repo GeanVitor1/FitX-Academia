@@ -2,7 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError } from 'rxjs';
-import { AuthResponse, LoginRequest, RegisterRequest, User } from '../models/auth.models';
+import { AuthResponse, LoginRequest, RegisterRequest, User, QuickLoginAccount, QuickLoginResponse } from '../models/auth.models';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -63,18 +63,12 @@ export class AuthService {
   }
 
   logout(): void {
-    const refreshToken = localStorage.getItem('refreshToken');
-
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
 
     this.token.set(null);
     this.currentUser.set(null);
-
-    if (refreshToken) {
-      this.http.post(`${this.API_URL}/revoke`, { refreshToken }).subscribe({ error: () => {} });
-    }
 
     this.router.navigate(['/']);
   }
@@ -113,6 +107,21 @@ export class AuthService {
       token,
       newPassword
     });
+  }
+
+  getQuickLogins(): Observable<QuickLoginResponse> {
+    return this.http.get<QuickLoginResponse>(`${this.API_URL}/quick-logins`);
+  }
+
+  quickLogin(email: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.API_URL}/quick-login`, { email })
+      .pipe(
+        tap(response => {
+          if (response.success && response.token && response.refreshToken) {
+            this.setSession(response);
+          }
+        })
+      );
   }
 
   getCurrentUser(): Observable<User> {

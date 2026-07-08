@@ -3,6 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { AlunosService } from '../../../../core/services/alunos.service';
+import { TreinosService } from '../../../../core/services/treinos.service';
+import { ExerciciosService } from '../../../../core/services/exercicios.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { AlunoDto, CreateTreinoDto, CreateSerieDto, ExercicioDto } from '../../../../core/models/models';
 
 interface ExercicioLib {
   id: string;
@@ -46,7 +51,7 @@ interface TreinoHistorico {
     <div class="editor-page">
       <header class="editor-header">
         <div class="header-left">
-          <a routerLink="/professores" class="back-btn">←</a>
+          <a routerLink="/professor" class="back-btn">←</a>
           <div class="header-title">
             <h1>Criar Novo Treino</h1>
             @if (selectedAluno()) {
@@ -154,7 +159,7 @@ interface TreinoHistorico {
             </div>
           } @else {
             <div class="workout-list">
-              @for (ex of exerciciosTreino(); track ex.id; let i = $index) {
+              @for (ex of exerciciosTreino(); track $index; let i = $index) {
                 <div class="workout-item" [class.selected]="exercicioSelecionado()?.id === ex.id" (click)="selecionarExercicio(ex)">
                   <span class="item-number">{{ i + 1 }}</span>
                   <div class="item-info">
@@ -235,7 +240,7 @@ interface TreinoHistorico {
 
       <footer class="editor-footer">
         <button class="btn-secondary" (click)="limparTreino()">Limpar</button>
-        <button class="btn-primary" (click)="salvarTreino()" [disabled]="exerciciosTreino().length === 0 || !alunoId">Salvar Treino</button>
+        <button class="btn-primary" (click)="salvarTreino()" [disabled]="exerciciosTreino().length === 0 || !alunoId || saving()">{{ saving() ? 'Salvando...' : 'Salvar Treino' }}</button>
       </footer>
     </div>
   `,
@@ -492,6 +497,12 @@ interface TreinoHistorico {
 export class CriarTreinoComponent implements OnInit {
   private router2 = inject(Router);
   private route = inject(ActivatedRoute);
+  private alunosService = inject(AlunosService);
+  private treinosService = inject(TreinosService);
+  private exerciciosService = inject(ExerciciosService);
+  private authService = inject(AuthService);
+  private toast = inject(ToastService);
+
   treinoNome = '';
   treinoData = new Date().toISOString().split('T')[0];
   searchTerm = '';
@@ -501,6 +512,7 @@ export class CriarTreinoComponent implements OnInit {
   gruposAbertos = signal<Set<string>>(new Set());
   categoriasAbertas = signal<Set<string>>(new Set());
   selectedAluno = signal<Aluno | null>(null);
+  saving = signal(false);
 
   alunos: Aluno[] = [];
 
@@ -508,7 +520,7 @@ export class CriarTreinoComponent implements OnInit {
 
   historico = signal<TreinoHistorico[]>([]);
 
-  allExercicios = signal<ExercicioLib[]>(this.buildLibrary());
+  allExercicios = signal<ExercicioLib[]>([]);
 
   gruposDisponiveis = computed(() => {
     const grupos = new Set(this.allExercicios().map(e => e.grupoMuscular));
@@ -580,7 +592,7 @@ export class CriarTreinoComponent implements OnInit {
 
   addExercicio(ex: ExercicioLib): void {
     const novo: ExercicioTreino = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      id: ex.id,
       nome: ex.nome, grupoMuscular: ex.grupoMuscular,
       series: 4, repeticoes: '10-12', carga: '', descanso: '60', observacoes: ''
     };
@@ -613,7 +625,7 @@ export class CriarTreinoComponent implements OnInit {
     const novos: ExercicioTreino[] = [];
     for (const treino of selecionados) {
       for (const ex of treino.exercicios) {
-        novos.push({ ...ex, id: Date.now().toString() + Math.random().toString(36).substr(2, 5) });
+        novos.push({ ...ex });
       }
     }
     this.exerciciosTreino.update(list => [...list, ...novos]);
@@ -621,7 +633,6 @@ export class CriarTreinoComponent implements OnInit {
   }
 
   limparTreino(): void { this.exerciciosTreino.set([]); this.exercicioSelecionado.set(null); this.treinoNome = ''; }
-  private toast = inject(ToastService);
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
@@ -632,6 +643,51 @@ export class CriarTreinoComponent implements OnInit {
         }
       }
     });
+    this.loadAlunos();
+    this.loadExercicios();
+  }
+
+  private loadExercicios(): void {
+    this.exerciciosService.getAll().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.allExercicios.set(res.data.map(e => ({
+            id: e.id,
+            nome: e.nome,
+            grupoMuscular: e.grupoMuscular,
+            categoria: e.grupoMuscular,
+            favorito: false
+          })));
+        }
+      }
+    });
+  }
+
+  private loadAlunos(): void {
+    this.alunosService.getAll().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.alunos = res.data.map(a => ({ id: a.id, nome: a.nome, plano: a.planoNome || '', telefone: a.telefone || '' }));
+          this.loadHistorico();
+        }
+      },
+      error: () => this.toast.error('Erro ao carregar alunos')
+    });
+  }
+
+  private loadHistorico(): void {
+    const professor = this.authService.user();
+    if (!professor) return;
+    this.treinosService.getByProfessorId(professor.id).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.historico.set(res.data.map(t => ({
+            id: t.id, nome: t.nome, data: t.dataInicio,
+            exercicios: [], selected: false
+          })));
+        }
+      }
+    });
   }
 
   salvarTreino(): void {
@@ -639,8 +695,40 @@ export class CriarTreinoComponent implements OnInit {
       this.toast.error('Selecione um aluno e adicione exercicios');
       return;
     }
-    this.toast.success('Treino salvo com sucesso!');
-    setTimeout(() => this.router2.navigate(['/agenda']), 1500);
+    this.saving.set(true);
+    const dto: CreateTreinoDto = {
+      alunoId: this.alunoId,
+      nome: this.treinoNome || 'Treino personalizado',
+      dataInicio: this.treinoData,
+      diaSemana: new Date(this.treinoData).getDay()
+    };
+    this.treinosService.create(dto).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          const treinoId = res.data.id;
+          let completed = 0;
+          const total = this.exerciciosTreino().length;
+          for (const [i, ex] of this.exerciciosTreino().entries()) {
+            const serie: CreateSerieDto = {
+              exercicioId: ex.id,
+              repeticoes: parseInt(ex.repeticoes) || 10,
+              carga: parseFloat(ex.carga) || undefined,
+              descansoSegundos: parseInt(ex.descanso) || 60,
+              ordem: i + 1,
+              observacao: ex.observacoes || undefined
+            };
+            this.treinosService.addSeries(treinoId, serie).subscribe({
+              next: () => { completed++; if (completed === total) { this.saving.set(false); this.toast.success('Treino salvo com sucesso!'); setTimeout(() => this.router2.navigate(['/agenda']), 1500); } },
+              error: () => { completed++; if (completed === total) { this.saving.set(false); this.toast.success('Treino salvo com sucesso!'); setTimeout(() => this.router2.navigate(['/agenda']), 1500); } }
+            });
+          }
+        } else {
+          this.saving.set(false);
+          this.toast.error('Erro ao criar treino');
+        }
+      },
+      error: () => { this.saving.set(false); this.toast.error('Erro ao criar treino'); }
+    });
   }
 
   private buildLibrary(): ExercicioLib[] {

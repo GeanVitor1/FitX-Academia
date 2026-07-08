@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { NavbarComponent } from './components/navbar/navbar.component';
@@ -11,6 +11,7 @@ import { TechComponent } from './components/tech/tech.component';
 import { TestimonialsComponent } from './components/testimonials/testimonials.component';
 import { CtaComponent } from './components/cta/cta.component';
 import { AuthService } from '../../core/services/auth.service';
+import { QuickLoginAccount } from '../../core/models/auth.models';
 import { ToastService } from '../../shared/services/toast.service';
 
 @Component({
@@ -47,13 +48,16 @@ import { ToastService } from '../../shared/services/toast.service';
             <h2>Acesse o <span class="highlight">Sistema</span></h2>
             <p>Explore todas as funcionalidades com acesso rapido</p>
           </div>
+          @if (loading) {
+            <div class="demo-loading">Carregando...</div>
+          }
           <div class="demo-grid">
-            @for (account of accounts; track account.role) {
+            @for (account of accounts; track account.email) {
               <button class="demo-card" (click)="quickLogin(account)">
                 <span class="demo-icon">{{ account.icon }}</span>
-                <span class="demo-role">{{ account.label }}</span>
+                <span class="demo-role">{{ account.role }}</span>
                 <span class="demo-email">{{ account.email }}</span>
-                <span class="demo-desc">{{ account.desc }}</span>
+                <span class="demo-desc">{{ account.nome }}</span>
               </button>
             }
           </div>
@@ -128,37 +132,51 @@ import { ToastService } from '../../shared/services/toast.service';
       color: #666;
       line-height: 1.4;
     }
+    .demo-loading {
+      text-align: center; color: #666; padding: 3rem; font-size: 1.125rem;
+    }
     @media (max-width: 1024px) { .demo-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 640px) { .demo-grid { grid-template-columns: 1fr; } .demo-header h2 { font-size: 1.75rem; } }
   `]
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private router = inject(Router);
 
-  accounts = [
-    { role: 'Admin', email: 'admin@fitx.com', password: 'Admin@123', icon: '⚙️', label: 'Admin', desc: 'Painel administrativo completo' },
-    { role: 'Professor', email: 'professor@fitx.com', password: 'Professor@123', icon: '🏋️', label: 'Professor', desc: 'Gerenciar alunos e treinos' },
-    { role: 'Recepcionista', email: 'recepcionista@fitx.com', password: 'Recepcao@123', icon: '🏢', label: 'Recepcionista', desc: 'Check-in e cadastros' },
-    { role: 'Aluno', email: 'aluno@fitx.com', password: 'Aluno@123', icon: '💪', label: 'Aluno', desc: 'Treinos e acompanhamento' }
-  ];
+  accounts: QuickLoginAccount[] = [];
+  loading = true;
 
-  quickLogin(account: { role: string; email: string; password: string }): void {
-    this.authService.login({ email: account.email, password: account.password })
+  ngOnInit(): void {
+    this.authService.getQuickLogins().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.accounts = response.accounts;
+        }
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  quickLogin(account: QuickLoginAccount): void {
+    this.authService.quickLogin(account.email)
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success('Acesso demo: ' + account.role);
+            this.toastService.success('Acesso: ' + account.nome);
             const routes: Record<string, string> = {
               'Admin': '/admin',
               'Professor': '/alunos',
               'Recepcionista': '/recepcao',
-              'Aluno': '/dashboard'
+              'Aluno': '/dashboard',
+              'Financeiro': '/financeiro'
             };
             this.router.navigate([routes[account.role] || '/dashboard']);
           } else {
-            this.toastService.error('Erro ao acessar demo');
+            this.toastService.error('Erro ao acessar');
           }
         },
         error: () => {

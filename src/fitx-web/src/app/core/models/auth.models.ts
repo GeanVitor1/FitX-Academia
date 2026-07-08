@@ -43,3 +43,16 @@ export interface PagedResult<T> {
   hasPrevious: boolean;
   hasNext: boolean;
 }
+
+export interface QuickLoginAccount {
+  email: string;
+  nome: string;
+  role: string;
+  password: string;
+  icon: string;
+}
+
+export interface QuickLoginResponse {
+  success: boolean;
+  accounts: QuickLoginAccount[];
+}

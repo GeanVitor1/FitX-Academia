@@ -42,4 +42,15 @@ public class TreinoRepository : Repository<Treino>, ITreinoRepository
             .Where(t => t.ProfessorId == professorId && t.Ativo)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<Treino>> GetAllWithDetailsAsync()
+    {
+        return await _dbSet
+            .Include(t => t.Aluno)
+                .ThenInclude(a => a.Usuario)
+            .Include(t => t.Professor)
+                .ThenInclude(p => p.Usuario)
+            .Where(t => t.Ativo)
+            .ToListAsync();
+    }
 }

@@ -1,0 +1,10 @@
+{
+  "name": "FitX - Smart Gym Management",
+  "short_name": "FitX",
+  "theme_color": "#09090b",
+  "background_color": "#09090b",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "icons": []
+}

@@ -279,6 +279,53 @@ namespace FitX.Persistence.Migrations
                     b.ToTable("Checkins", (string)null);
                 });
 
+            modelBuilder.Entity("FitX.Domain.Entities.Equipamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Categoria")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Localizacao")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UltimaManutencao")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Categoria");
+
+                    b.HasIndex("Nome");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Equipamentos", (string)null);
+                });
+
             modelBuilder.Entity("FitX.Domain.Entities.Exercicio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -547,6 +594,59 @@ namespace FitX.Persistence.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Logs", (string)null);
+                });
+
+            modelBuilder.Entity("FitX.Domain.Entities.Mensagem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ConversaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DestinatarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EnviadaEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Lida")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LidaEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RemetenteId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversaId");
+
+                    b.HasIndex("DestinatarioId");
+
+                    b.HasIndex("EnviadaEm");
+
+                    b.HasIndex("Lida");
+
+                    b.HasIndex("RemetenteId");
+
+                    b.ToTable("Mensagens", (string)null);
                 });
 
             modelBuilder.Entity("FitX.Domain.Entities.Mensalidade", b =>
@@ -1385,6 +1485,25 @@ namespace FitX.Persistence.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("FitX.Domain.Entities.Mensagem", b =>
+                {
+                    b.HasOne("FitX.Domain.Entities.Usuario", "Destinatario")
+                        .WithMany("MensagensRecebidas")
+                        .HasForeignKey("DestinatarioId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("FitX.Domain.Entities.Usuario", "Remetente")
+                        .WithMany("MensagensEnviadas")
+                        .HasForeignKey("RemetenteId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Destinatario");
+
+                    b.Navigation("Remetente");
+                });
+
             modelBuilder.Entity("FitX.Domain.Entities.Mensalidade", b =>
                 {
                     b.HasOne("FitX.Domain.Entities.Aluno", "Aluno")
@@ -1608,6 +1727,10 @@ namespace FitX.Persistence.Migrations
                     b.Navigation("Funcionario");
 
                     b.Navigation("Logs");
+
+                    b.Navigation("MensagensEnviadas");
+
+                    b.Navigation("MensagensRecebidas");
 
                     b.Navigation("Notificacoes");
 

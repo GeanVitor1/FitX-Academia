@@ -7,6 +7,7 @@ export class ThemeService {
   private theme = signal<'dark' | 'light'>('dark');
 
   currentTheme = this.theme.asReadonly();
+  isDark = () => this.theme() === 'dark';
 
   constructor() {
     const saved = localStorage.getItem('theme') as 'dark' | 'light';

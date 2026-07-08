@@ -20,6 +20,23 @@ public class TreinosController : ControllerBase
         _treinoService = treinoService;
     }
 
+    [HttpGet]
+    [Authorize(Roles = "Admin,Professor")]
+    public async Task<ActionResult<ResponseDto<IEnumerable<TreinoDto>>>> GetAll()
+    {
+        var usuarioId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var role = User.FindFirstValue(ClaimTypes.Role);
+
+        if (role == "Admin")
+        {
+            var all = await _treinoService.GetAllAsync();
+            return Ok(all);
+        }
+
+        var result = await _treinoService.GetByUsuarioIdAsync(usuarioId);
+        return Ok(result);
+    }
+
     [HttpGet("aluno/{alunoId:guid}")]
     public async Task<ActionResult<ResponseDto<IEnumerable<TreinoDto>>>> GetByAlunoId(Guid alunoId)
     {
@@ -64,8 +81,14 @@ public class TreinosController : ControllerBase
 
     [HttpPost("{treinoId:guid}/series")]
     [Authorize(Roles = "Admin,Professor")]
-    public async Task<ActionResult<ResponseDto<bool>>> AddSerie(Guid treinoId, [FromBody] CreateSerieDto dto)
+    public async Task<ActionResult<ResponseDto<bool>>> AddSerie(Guid treinoId, [FromBody] CreateSerieDto? dto)
     {
+        if (dto is null)
+        {
+            Console.WriteLine($"[AddSerie] dto is null for treinoId={treinoId}");
+            return BadRequest(ResponseDto<bool>.FailureResult("Dados da série inválidos"));
+        }
+        Console.WriteLine($"[AddSerie] exercicioId={dto.ExercicioId}, rep={dto.Repeticoes}, ordem={dto.Ordem}");
         var result = await _treinoService.AddSerieAsync(treinoId, dto);
         if (!result.Success) return BadRequest(result);
         return Ok(result);

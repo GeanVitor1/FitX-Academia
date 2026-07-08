@@ -175,32 +175,40 @@ export class MensalidadesComponent implements OnInit {
 
   loadData(): void {
     this.loading.set(true);
-    this.alunosService.getAll().subscribe(res => { if (res.success && res.data) this.alunos.set(res.data); });
-    this.planosService.getAll().subscribe(res => { if (res.success && res.data) this.planos.set(res.data); });
-    this.mensalidadesService.getByAlunoId('00000000-0000-0000-0000-000000000000').subscribe({
-      next: () => this.loading.set(false),
-      error: () => { this.loading.set(false); }
+    this.alunosService.getAll().subscribe({
+      next: (res) => { if (res.success && res.data) this.alunos.set(res.data); },
+      error: () => this.toast.error('Erro ao carregar alunos')
+    });
+    this.planosService.getAll().subscribe({
+      next: (res) => { if (res.success && res.data) this.planos.set(res.data); },
+      error: () => this.toast.error('Erro ao carregar planos')
     });
     this.loadMensalidades();
   }
 
   loadMensalidades(): void {
-    this.alunosService.getAll().subscribe(res => {
-      if (res.success && res.data) {
-        const all: MensalidadeDto[] = [];
-        let completed = 0;
-        for (const aluno of res.data) {
-          this.mensalidadesService.getByAlunoId(aluno.id).subscribe(r => {
-            if (r.success && r.data) all.push(...r.data);
-            completed++;
-            if (completed === res.data!.length) {
-              this.mensalidades.set(all);
-              this.aplicarFiltro();
-            }
-          });
+    this.alunosService.getAll().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          const all: MensalidadeDto[] = [];
+          let completed = 0;
+          for (const aluno of res.data) {
+            this.mensalidadesService.getByAlunoId(aluno.id).subscribe({
+              next: (r) => {
+                if (r.success && r.data) all.push(...r.data);
+                completed++;
+                if (completed === res.data!.length) {
+                  this.mensalidades.set(all);
+                  this.aplicarFiltro();
+                }
+              },
+              error: () => completed++
+            });
+          }
+          if (res.data.length === 0) this.loading.set(false);
         }
-        if (res.data.length === 0) this.loading.set(false);
-      }
+      },
+      error: () => { this.loading.set(false); this.toast.error('Erro ao carregar mensalidades'); }
     });
   }
 

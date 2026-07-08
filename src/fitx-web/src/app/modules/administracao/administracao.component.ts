@@ -236,20 +236,20 @@ export class AdministracaoComponent implements OnInit {
     this.loading.set(true);
     this.usuariosService.getAll().subscribe({
       next: (res) => { if (res.success && res.data) this.users.set(res.data); },
-      error: () => {}
+      error: () => this.toast.error('Erro ao carregar usuários')
     });
     this.alunosService.getAll().subscribe({
       next: (res) => { if (res.success && res.data) this.totalAlunos.set(res.data.length); },
-      error: () => {}
+      error: () => this.toast.error('Erro ao carregar alunos')
     });
     this.professoresService.getAll().subscribe({
       next: (res) => { if (res.success && res.data) this.totalProfessores.set(res.data.length); this.loading.set(false); },
-      error: () => { this.loading.set(false); }
+      error: () => { this.loading.set(false); this.toast.error('Erro ao carregar professores'); }
     });
   }
 
   toggleUserStatus(user: UsuarioDto): void {
-    this.usuariosService.update(user.id, { nome: user.nome }).subscribe({
+    this.usuariosService.update(user.id, { ativo: !user.ativo }).subscribe({
       next: () => { this.toast.success('Status alterado'); this.loadData(); },
       error: () => this.toast.error('Erro ao alterar status')
     });

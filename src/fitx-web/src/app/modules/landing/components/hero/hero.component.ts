@@ -1,12 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ScrollAnimateDirective } from '../../../../shared/directives/scroll-animate.directive';
 
 @Component({
   selector: 'app-hero',
   standalone: true,
-  imports: [CommonModule, RouterModule, ScrollAnimateDirective],
+  imports: [CommonModule, RouterModule],
   template: `
     <section id="inicio" class="hero">
       <div class="hero-bg">
@@ -17,24 +16,24 @@ import { ScrollAnimateDirective } from '../../../../shared/directives/scroll-ani
       <div class="hero-content">
         <div class="hero-grid">
           <div class="hero-left">
-            <div class="badge" scrollAnimate animationType="fadeUp" [delay]="0">
+            <div class="badge">
               <span class="badge-line"></span>
               SEU MELHOR COMEÇA AQUI
             </div>
 
-            <h1 class="hero-title" scrollAnimate animationType="fadeUp" [delay]="0.1">
+            <h1 class="hero-title">
               <span class="title-white">TRANSFORME</span>
               <span class="title-white">SEU CORPO.</span>
               <span class="title-green">TRANSFORME</span>
               <span class="title-green">SUA VIDA.</span>
             </h1>
 
-            <p class="hero-subtitle" scrollAnimate animationType="fadeUp" [delay]="0.2">
+            <p class="hero-subtitle">
               Estrutura completa, treinos personalizados e acompanhamento
               profissional para você alcançar seus objetivos de verdade.
             </p>
 
-            <div class="hero-actions" scrollAnimate animationType="fadeUp" [delay]="0.3">
+            <div class="hero-actions">
               <a routerLink="/auth/register" class="btn-primary">
                 <span>EU QUERO COMEÇAR</span>
                 <span class="arrow">→</span>
@@ -46,7 +45,7 @@ import { ScrollAnimateDirective } from '../../../../shared/directives/scroll-ani
             </div>
           </div>
 
-          <div class="hero-right" scrollAnimate animationType="fadeUp" [delay]="0.4">
+          <div class="hero-right">
             <div class="stats-card">
               <div class="stats-header">— ÚLTIMOS 30 DIAS</div>
               <div class="stats-row">

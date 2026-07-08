@@ -8,21 +8,45 @@ public class TreinoService
 {
     private readonly ITreinoRepository _treinoRepository;
     private readonly IRepository<Serie> _serieRepository;
+    private readonly IAlunoRepository _alunoRepository;
+    private readonly IProfessorRepository _professorRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public TreinoService(
         ITreinoRepository treinoRepository,
         IRepository<Serie> serieRepository,
+        IAlunoRepository alunoRepository,
+        IProfessorRepository professorRepository,
         IUnitOfWork unitOfWork)
     {
         _treinoRepository = treinoRepository;
         _serieRepository = serieRepository;
+        _alunoRepository = alunoRepository;
+        _professorRepository = professorRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<ResponseDto<IEnumerable<TreinoDto>>> GetByAlunoIdAsync(Guid alunoId)
     {
         var treinos = await _treinoRepository.GetByAlunoIdAsync(alunoId);
+        var dtos = treinos.Select(MapToDto);
+        return ResponseDto<IEnumerable<TreinoDto>>.SuccessResult(dtos);
+    }
+
+    public async Task<ResponseDto<IEnumerable<TreinoDto>>> GetAllAsync()
+    {
+        var treinos = await _treinoRepository.GetAllWithDetailsAsync();
+        var dtos = treinos.Select(MapToDto);
+        return ResponseDto<IEnumerable<TreinoDto>>.SuccessResult(dtos);
+    }
+
+    public async Task<ResponseDto<IEnumerable<TreinoDto>>> GetByUsuarioIdAsync(Guid usuarioId)
+    {
+        var professor = await _professorRepository.GetByUsuarioIdAsync(usuarioId);
+        if (professor is null)
+            return ResponseDto<IEnumerable<TreinoDto>>.SuccessResult(Enumerable.Empty<TreinoDto>());
+
+        var treinos = await _treinoRepository.GetByProfessorIdAsync(professor.Id);
         var dtos = treinos.Select(MapToDto);
         return ResponseDto<IEnumerable<TreinoDto>>.SuccessResult(dtos);
     }
@@ -45,10 +69,18 @@ public class TreinoService
 
     public async Task<ResponseDto<TreinoDto>> CreateAsync(CreateTreinoDto dto, Guid professorId)
     {
+        var aluno = await _alunoRepository.GetByIdAsync(dto.AlunoId);
+        if (aluno is null)
+            return ResponseDto<TreinoDto>.FailureResult("Aluno não encontrado");
+
+        var professor = await _professorRepository.GetByUsuarioIdAsync(professorId);
+        if (professor is null)
+            return ResponseDto<TreinoDto>.FailureResult("Professor não encontrado. Faça login novamente.");
+
         var treino = new Treino
         {
             AlunoId = dto.AlunoId,
-            ProfessorId = professorId,
+            ProfessorId = professor.Id,
             Nome = dto.Nome,
             Descricao = dto.Descricao,
             DataInicio = dto.DataInicio,
@@ -56,8 +88,16 @@ public class TreinoService
             Ativo = true
         };
 
-        await _treinoRepository.AddAsync(treino);
-        await _unitOfWork.SaveChangesAsync();
+        try
+        {
+            await _treinoRepository.AddAsync(treino);
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.InnerException?.Message ?? ex.Message;
+            return ResponseDto<TreinoDto>.FailureResult($"Erro ao criar treino: {msg}");
+        }
 
         var result = await _treinoRepository.GetDetailedByIdAsync(treino.Id);
         return ResponseDto<TreinoDto>.SuccessResult(MapToDto(result!), "Treino criado com sucesso");
@@ -84,6 +124,12 @@ public class TreinoService
 
     public async Task<ResponseDto<bool>> AddSerieAsync(Guid treinoId, CreateSerieDto dto)
     {
+        if (dto is null)
+            return ResponseDto<bool>.FailureResult("Dados da série inválidos");
+
+        if (dto.ExercicioId == Guid.Empty)
+            return ResponseDto<bool>.FailureResult("Exercício não informado");
+
         var treino = await _treinoRepository.GetByIdAsync(treinoId);
         if (treino is null)
             return ResponseDto<bool>.FailureResult("Treino não encontrado");
@@ -100,7 +146,16 @@ public class TreinoService
         };
 
         await _serieRepository.AddAsync(serie);
-        await _unitOfWork.SaveChangesAsync();
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.InnerException?.Message ?? ex.Message;
+            return ResponseDto<bool>.FailureResult($"Erro ao salvar série: {msg}");
+        }
 
         return ResponseDto<bool>.SuccessResult(true, "Série adicionada com sucesso");
     }

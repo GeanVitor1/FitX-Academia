@@ -29,4 +29,5 @@ public class UpdateUsuarioDto
     public string? Nome { get; set; }
     public string? Telefone { get; set; }
     public string? Avatar { get; set; }
+    public bool? Ativo { get; set; }
 }

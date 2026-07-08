@@ -1,8 +1,11 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { AlunosService } from '../../../../core/services/alunos.service';
+import { AvaliacoesService } from '../../../../core/services/avaliacoes.service';
+import { CreateAvaliacaoDto } from '../../../../core/models/models';
 
 @Component({
   selector: 'app-criar-avaliacao',
@@ -109,9 +112,9 @@ import { ToastService } from '../../../../shared/services/toast.service';
       </div>
 
       <div class="form-actions">
-        <a routerLink="/professores" class="btn-secondary">Cancelar</a>
-        <button class="btn-primary" (click)="saveEvaluation()" [disabled]="!canSave()">
-          Salvar Avaliação
+        <a routerLink="/professor" class="btn-secondary">Cancelar</a>
+        <button class="btn-primary" (click)="saveEvaluation()" [disabled]="!canSave() || saving()">
+          {{ saving() ? 'Salvando...' : 'Salvar Avaliação' }}
         </button>
       </div>
     </div>
@@ -292,8 +295,12 @@ import { ToastService } from '../../../../shared/services/toast.service';
     }
   `]
 })
-export class CriarAvaliacaoComponent {
+export class CriarAvaliacaoComponent implements OnInit {
   private toast = inject(ToastService);
+  private router = inject(Router);
+  private alunosService = inject(AlunosService);
+  private avaliacoesService = inject(AvaliacoesService);
+
   selectedStudent = '';
   evaluationDate = new Date().toISOString().split('T')[0];
   weight = 0;
@@ -306,6 +313,7 @@ export class CriarAvaliacaoComponent {
   hipCircumference = 0;
   legCircumference = 0;
   notes = '';
+  saving = signal(false);
 
   students: { id: string; name: string }[] = [];
 
@@ -331,9 +339,31 @@ export class CriarAvaliacaoComponent {
     return !!this.selectedStudent && this.weight > 0 && this.height > 0;
   }
 
+  ngOnInit(): void {
+    this.alunosService.getAll().subscribe({
+      next: (res) => { if (res.success && res.data) { this.students = res.data.map(a => ({ id: a.id, name: a.nome })); } },
+      error: () => this.toast.error('Erro ao carregar alunos')
+    });
+  }
+
   saveEvaluation(): void {
-    if (this.canSave()) {
-      this.toast.success('Avaliacao salva com sucesso!');
-    }
+    if (!this.canSave()) return;
+    this.saving.set(true);
+    const dto: CreateAvaliacaoDto = {
+      alunoId: this.selectedStudent,
+      peso: this.weight,
+      altura: this.height,
+      percentualGordura: this.bodyFat || undefined,
+      massaMuscular: this.muscleMass || undefined,
+      circunferenciaBracos: this.armCircumference || undefined,
+      circunferenciaPernas: this.legCircumference || undefined,
+      circunferenciaCintura: this.waistCircumference || undefined,
+      circunferenciaAbdomen: this.waistCircumference || undefined,
+      observacoes: this.notes || undefined
+    };
+    this.avaliacoesService.create(dto).subscribe({
+      next: () => { this.saving.set(false); this.toast.success('Avaliacao salva com sucesso!'); setTimeout(() => this.router.navigate(['/professor']), 1500); },
+      error: () => { this.saving.set(false); this.toast.error('Erro ao salvar avaliacao'); }
+    });
   }
 }

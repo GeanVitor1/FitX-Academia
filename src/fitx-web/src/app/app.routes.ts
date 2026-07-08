@@ -80,6 +80,11 @@ export const routes: Routes = [
 
       // Professor
       {
+        path: 'professor',
+        loadComponent: () => import('./modules/professores/professores.component').then(m => m.ProfessoresComponent),
+        data: { roles: ['Professor'] }
+      },
+      {
         path: 'alunos',
         loadComponent: () => import('./modules/alunos/alunos.component').then(m => m.AlunosComponent),
         data: { roles: ['Professor', 'Admin'] }
@@ -97,11 +102,6 @@ export const routes: Routes = [
       {
         path: 'professores/avaliacoes/criar',
         loadComponent: () => import('./modules/professores/components/criar-avaliacao/criar-avaliacao.component').then(m => m.CriarAvaliacaoComponent),
-        data: { roles: ['Professor', 'Admin'] }
-      },
-      {
-        path: 'professores/mensagens',
-        loadComponent: () => import('./modules/professores/components/mensagens/mensagens.component').then(m => m.MensagensComponent),
         data: { roles: ['Professor', 'Admin'] }
       },
 
@@ -143,6 +143,13 @@ export const routes: Routes = [
         data: { roles: ['Aluno', 'Professor', 'Admin', 'Recepcionista', 'Financeiro'] }
       },
 
+      // Perfil
+      {
+        path: 'perfil',
+        loadComponent: () => import('./modules/perfil/perfil.component').then(m => m.PerfilComponent),
+        data: { roles: ['Aluno', 'Professor', 'Admin', 'Recepcionista', 'Financeiro'] }
+      },
+
       // Admin
       {
         path: 'admin',
@@ -158,6 +165,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: ''
+    loadComponent: () => import('./modules/not-found/not-found.component').then(m => m.NotFoundComponent)
   }
 ];

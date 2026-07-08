@@ -32,7 +32,7 @@ export class AuthGuard implements CanActivate {
   private getHomeRoute(role?: string): string {
     const routes: Record<string, string> = {
       'Admin': '/admin',
-      'Professor': '/alunos',
+      'Professor': '/professor',
       'Recepcionista': '/recepcao',
       'Financeiro': '/financeiro'
     };

@@ -131,8 +131,9 @@ export class CheckinComponent implements OnInit {
 
   loadData(): void {
     this.loading.set(true);
-    this.alunosService.getAll().subscribe(res => {
-      if (res.success && res.data) this.alunos.set(res.data);
+    this.alunosService.getAll().subscribe({
+      next: (res) => { if (res.success && res.data) this.alunos.set(res.data); },
+      error: () => { this.toast.error('Erro ao carregar alunos'); }
     });
     this.checkinsService.getActive().subscribe({
       next: (res) => { if (res.success && res.data) this.checkins.set(res.data); this.loading.set(false); },

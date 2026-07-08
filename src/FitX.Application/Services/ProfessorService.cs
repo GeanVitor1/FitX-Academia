@@ -2,20 +2,24 @@ using FitX.Application.DTOs;
 using FitX.Domain.Entities;
 using FitX.Domain.Enums;
 using FitX.Domain.Interfaces;
+using Microsoft.AspNetCore.Identity;
 
 namespace FitX.Application.Services;
 
 public class ProfessorService
 {
+    private readonly UserManager<Usuario> _userManager;
     private readonly IProfessorRepository _professorRepository;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProfessorService(
+        UserManager<Usuario> userManager,
         IProfessorRepository professorRepository,
         IUsuarioRepository usuarioRepository,
         IUnitOfWork unitOfWork)
     {
+        _userManager = userManager;
         _professorRepository = professorRepository;
         _usuarioRepository = usuarioRepository;
         _unitOfWork = unitOfWork;
@@ -53,15 +57,19 @@ public class ProfessorService
 
         var usuario = new Usuario
         {
+            UserName = dto.Email,
             Nome = dto.Nome,
             Email = dto.Email,
             Role = UserRole.Professor,
             Telefone = dto.Telefone,
-            Ativo = true
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow
         };
 
-        await _usuarioRepository.AddAsync(usuario);
-        await _unitOfWork.SaveChangesAsync();
+        var identityResult = await _userManager.CreateAsync(usuario, dto.Password);
+        if (!identityResult.Succeeded)
+            return ResponseDto<ProfessorDto>.FailureResult(
+                identityResult.Errors.FirstOrDefault()?.Description ?? "Erro ao criar usuário");
 
         var professor = new Professor
         {
@@ -80,11 +88,11 @@ public class ProfessorService
 
     public async Task<ResponseDto<ProfessorDto>> UpdateAsync(Guid id, UpdateProfessorDto dto)
     {
-        var professor = await _professorRepository.GetByIdAsync(id);
+        var professor = await _professorRepository.GetDetailedByIdAsync(id);
         if (professor is null)
             return ResponseDto<ProfessorDto>.FailureResult("Professor não encontrado");
 
-        if (dto.Telefone is not null) professor.Usuario!.Telefone = dto.Telefone;
+        if (dto.Telefone is not null && professor.Usuario is not null) professor.Usuario.Telefone = dto.Telefone;
         if (dto.Especialidade is not null) professor.Especialidade = dto.Especialidade;
         if (dto.CREF is not null) professor.CREF = dto.CREF;
         if (dto.Bio is not null) professor.Bio = dto.Bio;
@@ -92,18 +100,23 @@ public class ProfessorService
         _professorRepository.Update(professor);
         await _unitOfWork.SaveChangesAsync();
 
-        var result = await _professorRepository.GetDetailedByIdAsync(professor.Id);
-        return ResponseDto<ProfessorDto>.SuccessResult(MapToDto(result!), "Professor atualizado com sucesso");
+        return ResponseDto<ProfessorDto>.SuccessResult(MapToDto(professor), "Professor atualizado com sucesso");
     }
 
     public async Task<ResponseDto<bool>> DeleteAsync(Guid id)
     {
-        var professor = await _professorRepository.GetByIdAsync(id);
+        var professor = await _professorRepository.GetDetailedByIdAsync(id);
         if (professor is null)
             return ResponseDto<bool>.FailureResult("Professor não encontrado");
 
+        var usuario = professor.Usuario;
         _professorRepository.Remove(professor);
         await _unitOfWork.SaveChangesAsync();
+
+        if (usuario is not null)
+        {
+            await _userManager.DeleteAsync(usuario);
+        }
 
         return ResponseDto<bool>.SuccessResult(true, "Professor removido com sucesso");
     }

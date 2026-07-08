@@ -5,6 +5,7 @@ using FitX.Identity.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FitX.API.Controllers;
 
@@ -130,33 +131,122 @@ public class AuthController : ControllerBase
             }
         }
 
-        // Create receptionist
-        var recepcionista = await _userManager.FindByEmailAsync("recepcao@fitx.com");
-        if (recepcionista is null)
+        // Create/refresh demo login users (used by quick-login buttons)
+        var demoLogins = new (string email, string nome, UserRole role, string password)[]
         {
-            var user = new FitX.Domain.Entities.Usuario
-            {
-                UserName = "recepcao@fitx.com", Nome = "Maria Recepcao", Email = "recepcao@fitx.com",
-                Role = UserRole.Recepcionista, Ativo = true, CriadoEm = DateTime.UtcNow
-            };
-            await _userManager.CreateAsync(user, "Recep@123");
-            results.Add(new { email = "recepcao@fitx.com", status = "criado", role = "Recepcionista" });
-        }
+            ("admin@fitx.com",      "Admin FitX",         UserRole.Admin,         "1234"),
+            ("prof@fitx.com",       "Professor FitX",     UserRole.Professor,     "1234"),
+            ("aluno@fitx.com",      "Aluno FitX",         UserRole.Aluno,         "1234"),
+            ("recepcao@fitx.com",   "Maria Recepcao",     UserRole.Recepcionista, "1234"),
+            ("financeiro@fitx.com", "Pedro Financeiro",   UserRole.Financeiro,    "1234")
+        };
 
-        // Create financial
-        var financeiro = await _userManager.FindByEmailAsync("financeiro@fitx.com");
-        if (financeiro is null)
+        foreach (var (email, nome, role, password) in demoLogins)
         {
+            var existing = await _userManager.FindByEmailAsync(email);
+            if (existing is not null)
+            {
+                await _userManager.DeleteAsync(existing);
+            }
+
             var user = new FitX.Domain.Entities.Usuario
             {
-                UserName = "financeiro@fitx.com", Nome = "Pedro Financeiro", Email = "financeiro@fitx.com",
-                Role = UserRole.Financeiro, Ativo = true, CriadoEm = DateTime.UtcNow
+                UserName = email, Nome = nome, Email = email,
+                Role = role, Ativo = true, CriadoEm = DateTime.UtcNow
             };
-            await _userManager.CreateAsync(user, "Finance@123");
-            results.Add(new { email = "financeiro@fitx.com", status = "criado", role = "Financeiro" });
+            var result = await _userManager.CreateAsync(user, password);
+            if (result.Succeeded)
+                results.Add(new { email, status = "criado/recriado", role = role.ToString() });
+            else
+                results.Add(new { email, status = "erro", errors = result.Errors.Select(e => e.Description) });
         }
 
         return Ok(new { success = true, accounts = results });
+    }
+
+    [HttpPost("seed-logins")]
+    public async Task<IActionResult> SeedLogins()
+    {
+        var results = new List<object>();
+
+        var logins = new (string email, string nome, UserRole role, string password)[]
+        {
+            ("admin@fitx.com",   "Admin FitX",     UserRole.Admin,         "1234"),
+            ("prof@fitx.com",    "Professor FitX",  UserRole.Professor,     "1234"),
+            ("aluno@fitx.com",   "Aluno FitX",      UserRole.Aluno,         "1234"),
+            ("recepcao@fitx.com","Recepcionista FitX", UserRole.Recepcionista, "1234"),
+            ("financeiro@fitx.com","Financeiro FitX", UserRole.Financeiro,  "1234")
+        };
+
+        foreach (var (email, nome, role, password) in logins)
+        {
+            var existing = await _userManager.FindByEmailAsync(email);
+            if (existing is not null)
+            {
+                var deleted = await _userManager.DeleteAsync(existing);
+                if (!deleted.Succeeded)
+                {
+                    results.Add(new { email, status = "erro ao deletar", errors = deleted.Errors.Select(e => e.Description) });
+                    continue;
+                }
+            }
+
+            var user = new FitX.Domain.Entities.Usuario
+            {
+                UserName = email, Nome = nome, Email = email,
+                Role = role, Ativo = true, CriadoEm = DateTime.UtcNow
+            };
+            var result = await _userManager.CreateAsync(user, password);
+            if (result.Succeeded)
+                results.Add(new { email, role = role.ToString(), password, status = "criado" });
+            else
+                results.Add(new { email, role = role.ToString(), status = "erro", errors = result.Errors.Select(e => e.Description) });
+        }
+
+        return Ok(new { success = true, accounts = results });
+    }
+
+    [HttpPost("seed-reset")]
+    public async Task<IActionResult> SeedReset()
+    {
+        var results = new List<object>();
+
+        var allUsers = await _userManager.Users.ToListAsync();
+        foreach (var u in allUsers)
+        {
+            var deleted = await _userManager.DeleteAsync(u);
+            if (!deleted.Succeeded)
+                results.Add(new { email = u.Email, status = "erro ao deletar" });
+        }
+
+        var logins = new (string email, string nome, UserRole role, string password)[]
+        {
+            ("admin@fitx.com",      "Admin FitX",        UserRole.Admin,         "1234"),
+            ("prof@fitx.com",       "Professor FitX",     UserRole.Professor,     "1234"),
+            ("aluno@fitx.com",      "Aluno FitX",         UserRole.Aluno,         "1234"),
+            ("recepcao@fitx.com",   "Recepcionista FitX", UserRole.Recepcionista, "1234"),
+            ("financeiro@fitx.com", "Financeiro FitX",    UserRole.Financeiro,    "1234")
+        };
+
+        foreach (var (email, nome, role, password) in logins)
+        {
+            var user = new FitX.Domain.Entities.Usuario
+            {
+                UserName = email,
+                Nome = nome,
+                Email = email,
+                Role = role,
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow
+            };
+            var result = await _userManager.CreateAsync(user, password);
+            if (result.Succeeded)
+                results.Add(new { email, role = role.ToString(), password, status = "criado" });
+            else
+                results.Add(new { email, role = role.ToString(), status = "erro", errors = result.Errors.Select(e => e.Description) });
+        }
+
+        return Ok(new { success = true, accounts = results, message = "Banco resetado com sucesso" });
     }
 
     [HttpPost("login")]
@@ -234,6 +324,57 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("quick-logins")]
+    [ProducesResponseType(typeof(object), 200)]
+    public async Task<IActionResult> GetQuickLogins()
+    {
+        var users = await _userManager.Users
+            .Where(u => u.Ativo)
+            .Select(u => new QuickLoginInfo
+            {
+                Email = u.Email ?? string.Empty,
+                Nome = u.Nome,
+                Role = u.Role.ToString(),
+                Password = "1234"
+            })
+            .ToListAsync();
+
+        var roleIcons = new Dictionary<string, string>
+        {
+            { "Admin", "\u2699\uFE0F" },
+            { "Professor", "\uD83C\uDFCB\uFE0F" },
+            { "Aluno", "\uD83D\uDCAA" },
+            { "Recepcionista", "\uD83C\uDFE2" },
+            { "Financeiro", "\uD83D\uDCB0" }
+        };
+
+        var result = users.Select(u => new
+        {
+            u.Email,
+            u.Nome,
+            u.Role,
+            u.Password,
+            Icon = roleIcons.GetValueOrDefault(u.Role, "\uD83D\uDC64")
+        });
+
+        return Ok(new { success = true, accounts = result });
+    }
+
+    [HttpPost("quick-login")]
+    [ProducesResponseType(typeof(AuthResult), 200)]
+    [ProducesResponseType(typeof(AuthResult), 400)]
+    public async Task<IActionResult> QuickLogin([FromBody] QuickLoginRequest request)
+    {
+        var result = await _authService.QuickLoginAsync(request.Email);
+
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
     [Authorize]
     [HttpGet("me")]
     [ProducesResponseType(typeof(object), 200)]
@@ -264,4 +405,17 @@ public class ResetPasswordRequest
     public string Email { get; set; } = string.Empty;
     public string Token { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
+}
+
+public class QuickLoginInfo
+{
+    public string Email { get; set; } = string.Empty;
+    public string Nome { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+public class QuickLoginRequest
+{
+    public string Email { get; set; } = string.Empty;
 }

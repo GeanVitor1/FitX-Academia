@@ -2,7 +2,20 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 
+const AUTH_SKIP_URLS = [
+  '/login',
+  '/register',
+  '/refresh',
+  '/revoke',
+  '/forgot-password',
+  '/reset-password'
+];
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  if (AUTH_SKIP_URLS.some(url => req.url.includes(url))) {
+    return next(req);
+  }
+
   const authService = inject(AuthService);
   const token = authService.getToken();
 

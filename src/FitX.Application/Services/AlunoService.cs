@@ -2,6 +2,7 @@ using FitX.Application.DTOs;
 using FitX.Domain.Entities;
 using FitX.Domain.Enums;
 using FitX.Domain.Interfaces;
+using Microsoft.AspNetCore.Identity;
 
 namespace FitX.Application.Services;
 
@@ -9,16 +10,25 @@ public class AlunoService
 {
     private readonly IAlunoRepository _alunoRepository;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly UserManager<Usuario> _userManager;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly INotificacaoRepository _notificacaoRepository;
+    private readonly IRepository<Plano> _planoRepository;
 
     public AlunoService(
         IAlunoRepository alunoRepository,
         IUsuarioRepository usuarioRepository,
-        IUnitOfWork unitOfWork)
+        UserManager<Usuario> userManager,
+        IUnitOfWork unitOfWork,
+        INotificacaoRepository notificacaoRepository,
+        IRepository<Plano> planoRepository)
     {
         _alunoRepository = alunoRepository;
         _usuarioRepository = usuarioRepository;
+        _userManager = userManager;
         _unitOfWork = unitOfWork;
+        _notificacaoRepository = notificacaoRepository;
+        _planoRepository = planoRepository;
     }
 
     public async Task<ResponseDto<IEnumerable<AlunoDto>>> GetAllAsync()
@@ -48,11 +58,12 @@ public class AlunoService
 
     public async Task<ResponseDto<AlunoDto>> CreateAsync(CreateAlunoDto dto)
     {
-        if (await _usuarioRepository.EmailExistsAsync(dto.Email))
+        if (await _alunoRepository.EmailExistsAsync(dto.Email))
             return ResponseDto<AlunoDto>.FailureResult("Email já está em uso");
 
         var usuario = new Usuario
         {
+            UserName = dto.Email,
             Nome = dto.Nome,
             Email = dto.Email,
             Role = UserRole.Aluno,
@@ -60,7 +71,11 @@ public class AlunoService
             Ativo = true
         };
 
-        await _usuarioRepository.AddAsync(usuario);
+        var identityResult = await _userManager.CreateAsync(usuario, dto.Password);
+        if (!identityResult.Succeeded)
+            return ResponseDto<AlunoDto>.FailureResult(
+                identityResult.Errors.FirstOrDefault()?.Description ?? "Erro ao criar usuário");
+
         await _unitOfWork.SaveChangesAsync();
 
         var aluno = new Aluno
@@ -74,6 +89,25 @@ public class AlunoService
         };
 
         await _alunoRepository.AddAsync(aluno);
+        await _unitOfWork.SaveChangesAsync();
+
+        var planoNome = "selecionado";
+        if (dto.PlanoId.HasValue)
+        {
+            var plano = await _planoRepository.GetByIdAsync(dto.PlanoId.Value);
+            if (plano is not null)
+                planoNome = $"{plano.Nome} (R$ {plano.Preco:F2}/mês)";
+        }
+
+        var notificacao = new Notificacao
+        {
+            UsuarioId = usuario.Id,
+            Titulo = "Pagamento Pendente",
+            Mensagem = $"Você foi cadastrado no plano {planoNome}. Realize o pagamento para liberar o acesso completo à academia.",
+            Link = "/aluno/mensalidades",
+            Lida = false
+        };
+        await _notificacaoRepository.AddAsync(notificacao);
         await _unitOfWork.SaveChangesAsync();
 
         var result = await _alunoRepository.GetDetailedByIdAsync(aluno.Id);

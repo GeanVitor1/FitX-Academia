@@ -123,7 +123,6 @@ if (!app.Environment.IsDevelopment())
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
-app.MapHub<ChatHub>("/hubs/chat");
 
 // Apply pending migrations
 using (var scope = app.Services.CreateScope())
@@ -154,10 +153,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Auto-seed demo users on startup
+// Auto-seed demo users on startup (only if they don't exist)
 using (var scope = app.Services.CreateScope())
 {
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<FitX.Persistence.FitXDbContext>();
 
     var demoLogins = new (string email, string nome, UserRole role, string password)[]
     {
@@ -171,10 +171,7 @@ using (var scope = app.Services.CreateScope())
     foreach (var (email, nome, role, password) in demoLogins)
     {
         var existing = await userManager.FindByEmailAsync(email);
-        if (existing is not null)
-        {
-            await userManager.DeleteAsync(existing);
-        }
+        if (existing is not null) continue;
 
         var user = new Usuario
         {
@@ -186,6 +183,25 @@ using (var scope = app.Services.CreateScope())
             CriadoEm = DateTime.UtcNow
         };
         await userManager.CreateAsync(user, password);
+
+        if (role == UserRole.Professor && !dbContext.Professores.Any(p => p.UsuarioId == user.Id))
+        {
+            dbContext.Professores.Add(new FitX.Domain.Entities.Professor
+            {
+                UsuarioId = user.Id,
+                Especialidade = "Geral"
+            });
+        }
+        else if (role == UserRole.Aluno && !dbContext.Alunos.Any(a => a.UsuarioId == user.Id))
+        {
+            dbContext.Alunos.Add(new FitX.Domain.Entities.Aluno
+            {
+                UsuarioId = user.Id,
+                DataMatricula = DateTime.UtcNow
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 }
 

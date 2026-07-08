@@ -141,13 +141,16 @@ export class TreinosComponent implements OnInit {
     this.loading.set(true);
     const user = this.authService.user();
     if (user?.role === 'Aluno') {
-      this.alunosService.getByUsuarioId(user.id).subscribe(alunoRes => {
+      this.alunosService.getByUsuarioId(user.id).subscribe({
+        next: (alunoRes) => {
         if (alunoRes.success && alunoRes.data) {
           this.treinosService.getByAlunoId(alunoRes.data.id).subscribe({
             next: (res) => { if (res.success && res.data) { this.workouts.set(res.data); this.setFilter('all'); } this.loading.set(false); },
             error: () => { this.loading.set(false); this.toast.error('Erro ao carregar treinos'); }
           });
         } else { this.loading.set(false); }
+        },
+        error: () => { this.loading.set(false); this.toast.error('Erro ao carregar dados do aluno'); }
       });
     } else if (user?.role === 'Professor') {
       this.treinosService.getByProfessorId(user.id).subscribe({

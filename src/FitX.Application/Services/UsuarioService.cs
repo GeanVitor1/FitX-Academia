@@ -61,6 +61,7 @@ public class UsuarioService
         if (dto.Nome is not null) usuario.Nome = dto.Nome;
         if (dto.Telefone is not null) usuario.Telefone = dto.Telefone;
         if (dto.Avatar is not null) usuario.Avatar = dto.Avatar;
+        if (dto.Ativo.HasValue) usuario.Ativo = dto.Ativo.Value;
 
         _usuarioRepository.Update(usuario);
         await _unitOfWork.SaveChangesAsync();

@@ -13,6 +13,10 @@ export class TreinosService {
     return this.http.get<ResponseDto<TreinoDto[]>>(`${this.apiUrl}/aluno/${alunoId}`);
   }
 
+  getAll(): Observable<ResponseDto<TreinoDto[]>> {
+    return this.http.get<ResponseDto<TreinoDto[]>>(this.apiUrl);
+  }
+
   getByProfessorId(professorId: string): Observable<ResponseDto<TreinoDto[]>> {
     return this.http.get<ResponseDto<TreinoDto[]>>(`${this.apiUrl}/professor/${professorId}`);
   }

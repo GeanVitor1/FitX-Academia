@@ -1,7 +1,10 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { AlunosService } from '../../../../core/services/alunos.service';
+import { PagamentosService } from '../../../../core/services/pagamentos.service';
+import { CreatePagamentoDto, AlunoDto } from '../../../../core/models/models';
 
 @Component({
   selector: 'app-pagamento-recepcao',
@@ -528,19 +531,37 @@ import { ToastService } from '../../../../shared/services/toast.service';
     }
   `]
 })
-export class PagamentoRecepcaoComponent {
+export class PagamentoRecepcaoComponent implements OnInit {
   private toast = inject(ToastService);
+  private alunosService = inject(AlunosService);
+  private pagamentosService = inject(PagamentosService);
+
   searchTerm = '';
   paymentAmount = 0;
   paymentReference = '';
   paymentMethod = 'pix';
   paymentNotes = '';
+  saving = signal(false);
 
   foundStudent = signal<{ id: string; name: string; plan: string; status: string } | null>(null);
 
   recentPayments: { id: string; student: string; reference: string; amount: string; method: string; status: string }[] = [];
 
   private allStudents: { id: string; name: string; plan: string; status: string }[] = [];
+
+  ngOnInit(): void {
+    this.alunosService.getAll().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.allStudents = res.data.map(a => ({
+            id: a.id, name: a.nome, plan: a.planoNome || 'Sem plano',
+            status: a.status === 'Ativo' ? 'active' : 'inactive'
+          }));
+        }
+      },
+      error: () => this.toast.error('Erro ao carregar alunos')
+    });
+  }
 
   searchStudent(): void {
     if (this.searchTerm.trim()) {
@@ -577,10 +598,20 @@ export class PagamentoRecepcaoComponent {
   }
 
   confirmPayment(): void {
-    if (this.canConfirm()) {
-      this.toast.success('Pagamento confirmado com sucesso!');
-      this.cancel();
-    }
+    if (!this.canConfirm()) return;
+    this.saving.set(true);
+    const metodoMap: Record<string, 'PIX' | 'CartaoCredito' | 'Dinheiro' | 'Boleto'> = {
+      pix: 'PIX', card: 'CartaoCredito', cash: 'Dinheiro', boleto: 'Boleto'
+    };
+    const dto: CreatePagamentoDto = {
+      mensalidadeId: '',
+      metodo: metodoMap[this.paymentMethod] || 'PIX',
+      valor: this.paymentAmount
+    };
+    this.pagamentosService.create(dto).subscribe({
+      next: () => { this.saving.set(false); this.toast.success('Pagamento confirmado com sucesso!'); this.cancel(); },
+      error: () => { this.saving.set(false); this.toast.error('Erro ao registrar pagamento'); }
+    });
   }
 
   cancel(): void {

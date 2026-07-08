@@ -39,7 +39,7 @@ export class ScrollAnimateDirective implements OnInit, OnDestroy {
           }
         });
       },
-      { threshold: this.threshold, rootMargin: '0px 0px -50px 0px' }
+      { threshold: this.threshold, rootMargin: '0px 0px 750px 0px' }
     );
 
     this.observer.observe(element);

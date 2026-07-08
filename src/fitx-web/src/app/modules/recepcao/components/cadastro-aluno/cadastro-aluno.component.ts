@@ -116,8 +116,8 @@ export class CadastroAlunoComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    this.planosService.getAll().subscribe(res => { if (res.success && res.data) this.planos.set(res.data); });
-    this.professoresService.getAll().subscribe(res => { if (res.success && res.data) this.professores.set(res.data); });
+    this.planosService.getAll().subscribe({ next: (res) => { if (res.success && res.data) this.planos.set(res.data); }, error: () => this.toast.error('Erro ao carregar planos') });
+    this.professoresService.getAll().subscribe({ next: (res) => { if (res.success && res.data) this.professores.set(res.data); }, error: () => this.toast.error('Erro ao carregar professores') });
   }
 
   canSave(): boolean {

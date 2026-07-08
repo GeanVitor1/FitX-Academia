@@ -31,6 +31,7 @@ public class FitXDbContext : IdentityDbContext<Usuario, IdentityRole<Guid>, Guid
     public DbSet<Historico> Historicos => Set<Historico>();
     public DbSet<Log> Logs => Set<Log>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { ThemeService } from '../theme/theme.service';
+import { FooterComponent } from './footer/footer.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FooterComponent],
   template: `
     <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed()">
       <aside class="sidebar">
@@ -40,6 +41,15 @@ import { ThemeService } from '../theme/theme.service';
               <span class="nav-icon">◉</span>
               @if (!sidebarCollapsed()) {
                 <span class="nav-text">Alunos</span>
+              }
+            </a>
+          }
+
+          @if (authService.isProfessor()) {
+            <a routerLink="/professor" routerLinkActive="active" class="nav-item" [title]="sidebarCollapsed() ? 'Professor' : ''">
+              <span class="nav-icon">◎</span>
+              @if (!sidebarCollapsed()) {
+                <span class="nav-text">Professor</span>
               }
             </a>
           }
@@ -153,9 +163,24 @@ import { ThemeService } from '../theme/theme.service';
               <span class="nav-text">Notificações</span>
             }
           </a>
+
+          <a routerLink="/perfil" routerLinkActive="active" class="nav-item" [title]="sidebarCollapsed() ? 'Perfil' : ''">
+            <span class="nav-icon">◎</span>
+            @if (!sidebarCollapsed()) {
+              <span class="nav-text">Perfil</span>
+            }
+          </a>
         </nav>
 
         <div class="sidebar-footer">
+          <div class="theme-toggle">
+            <button class="theme-toggle-btn" (click)="themeService.toggleTheme()" [title]="themeService.isDark() ? 'Modo claro' : 'Modo escuro'">
+              <span class="theme-icon">{{ themeService.isDark() ? '☀' : '☾' }}</span>
+              @if (!sidebarCollapsed()) {
+                <span class="theme-text">{{ themeService.isDark() ? 'Modo Claro' : 'Modo Escuro' }}</span>
+              }
+            </button>
+          </div>
           <div class="user-section">
             <div class="user-avatar">
               {{ getInitials() }}
@@ -166,11 +191,9 @@ import { ThemeService } from '../theme/theme.service';
                 <span class="user-role">{{ formatRole() }}</span>
               </div>
             }
-            @if (!sidebarCollapsed()) {
-              <button class="logout-btn" (click)="authService.logout()" title="Sair">
-                <span class="logout-icon">⏻</span>
-              </button>
-            }
+            <button class="logout-btn" (click)="authService.logout()" [title]="sidebarCollapsed() ? 'Sair' : 'Sair'">
+              <span class="logout-icon">⏻</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -204,6 +227,7 @@ import { ThemeService } from '../theme/theme.service';
         <div class="content">
           <router-outlet />
         </div>
+        <app-footer />
       </main>
     </div>
   `,
@@ -425,6 +449,44 @@ import { ThemeService } from '../theme/theme.service';
 
     .theme-toggle {
       margin-bottom: 8px;
+    }
+
+    .theme-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--black-600);
+      background: transparent;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: all 200ms ease;
+      font-family: var(--font);
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--black-800);
+      color: var(--gray-700);
+      border-color: var(--gray-400);
+    }
+
+    .theme-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .theme-text {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
     }
 
     .user-section {

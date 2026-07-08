@@ -4,6 +4,7 @@ using FitX.Domain.Enums;
 using FitX.Domain.Interfaces;
 using FitX.Identity.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace FitX.Identity.Services;
 
@@ -94,8 +95,19 @@ public class AuthService
             return AuthResult.FailureResult("Email ou senha inválidos");
         }
 
+        var userId = user.Id;
         user.UltimoLogin = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
+
+        try
+        {
+            await _userManager.UpdateAsync(user);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            user = await _userManager.FindByIdAsync(userId.ToString());
+            user.UltimoLogin = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+        }
 
         var token = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
@@ -199,6 +211,50 @@ public class AuthService
         await _unitOfWork.SaveChangesAsync();
 
         return AuthResult.SuccessResult(string.Empty, string.Empty, DateTime.MinValue, DateTime.MinValue);
+    }
+
+    public async Task<AuthResult> QuickLoginAsync(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null || !user.Ativo)
+        {
+            return AuthResult.FailureResult("Usuário não encontrado");
+        }
+
+        user.UltimoLogin = DateTime.UtcNow;
+
+        try
+        {
+            await _userManager.UpdateAsync(user);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            user = await _userManager.FindByEmailAsync(email);
+            if (user is not null)
+            {
+                user.UltimoLogin = DateTime.UtcNow;
+                await _userManager.UpdateAsync(user);
+            }
+        }
+
+        var token = _tokenService.GenerateAccessToken(user);
+        var refreshToken = _tokenService.GenerateRefreshToken();
+        var expiration = _tokenService.GetTokenExpiration();
+        var refreshExpiration = _tokenService.GetRefreshTokenExpiration();
+
+        var refreshTokenEntity = new RefreshToken
+        {
+            UsuarioId = user.Id,
+            Token = refreshToken,
+            ExpiraEm = refreshExpiration,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow
+        };
+
+        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return AuthResult.SuccessResult(token, refreshToken, expiration, refreshExpiration);
     }
 
     public async Task<AuthResult> ForgotPasswordAsync(string email)

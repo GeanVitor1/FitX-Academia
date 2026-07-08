@@ -126,10 +126,14 @@ import { ProfessorDto, CreateProfessorDto, UpdateProfessorDto } from '../../core
                 </td>
                 <td style="padding: 0.875rem 1.25rem;">
                   <div style="display: flex; gap: 0.5rem;">
-                    <button (click)="editar(prof)" title="Editar"
-                      style="width: 30px; height: 30px; border-radius: 0.375rem; border: 1px solid #1e1e22; background: #18181b; cursor: pointer; color: #a1a1aa;">✏️</button>
-                    <button (click)="excluir(prof.id)" title="Excluir"
-                      style="width: 30px; height: 30px; border-radius: 0.375rem; border: 1px solid #1e1e22; background: #18181b; cursor: pointer; color: #a1a1aa;">🗑️</button>
+                    <button (click)="editar(prof)"
+                      style="padding: 0.375rem 0.75rem; background: rgba(250, 250, 250, 0.05); border: 1px solid #1e1e22; border-radius: 0.375rem; color: #a1a1aa; cursor: pointer; font-weight: 500; font-size: 0.75rem;">
+                      Editar
+                    </button>
+                    <button (click)="deletar(prof)"
+                      style="padding: 0.375rem 0.75rem; background: rgba(255, 70, 70, 0.1); border: 1px solid rgba(255, 70, 70, 0.3); border-radius: 0.375rem; color: #ff6b6b; cursor: pointer; font-weight: 500; font-size: 0.75rem;">
+                      Excluir
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -138,6 +142,30 @@ import { ProfessorDto, CreateProfessorDto, UpdateProfessorDto } from '../../core
         </table>
       </div>
     </div>
+
+      @if (showDeleteModal()) {
+        <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;" (click)="showDeleteModal.set(false)">
+          <div style="background: #111113; border: 1px solid #1e1e22; border-radius: 1rem; padding: 2rem; max-width: 420px; width: 90%; box-shadow: 0 25px 60px rgba(0,0,0,0.5);" (click)="$event.stopPropagation()">
+            <div style="width: 48px; height: 48px; background: rgba(255,70,70,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+              <span style="font-size: 1.5rem;">🗑️</span>
+            </div>
+            <h3 style="color: #fafafa; margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600;">Excluir professor</h3>
+            <p style="color: #a1a1aa; margin: 0 0 1.5rem 0; font-size: 0.875rem; line-height: 1.5;">
+              Tem certeza que deseja excluir <strong style="color: #fafafa;">{{ deletingProfessor()?.nome }}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+              <button (click)="showDeleteModal.set(false)"
+                style="padding: 0.625rem 1.25rem; background: #18181b; border: 1px solid #1e1e22; border-radius: 0.5rem; color: #a1a1aa; cursor: pointer; font-weight: 500; font-size: 0.875rem;">
+                Cancelar
+              </button>
+              <button (click)="confirmarExclusao()" [disabled]="excluindo()"
+                style="padding: 0.625rem 1.25rem; background: {{ excluindo() ? '#6b6b6b' : '#ff4646' }}; border: none; border-radius: 0.5rem; color: #fff; cursor: pointer; font-weight: 600; font-size: 0.875rem;">
+                {{ excluindo() ? 'Excluindo...' : 'Sim, excluir' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
   `,
   styles: [`
     :host { display: block; }
@@ -153,6 +181,9 @@ export class ProfessoresAdminComponent implements OnInit {
   loading = signal(false);
   professores = signal<ProfessorDto[]>([]);
   form = { nome: '', email: '', especialidade: '', cref: '', bio: '' };
+  showDeleteModal = signal(false);
+  deletingProfessor = signal<ProfessorDto | null>(null);
+  excluindo = signal(false);
 
   ngOnInit(): void {
     this.loadProfessores();
@@ -198,10 +229,18 @@ export class ProfessoresAdminComponent implements OnInit {
     this.cancelar();
   }
 
-  excluir(id: string): void {
-    this.professoresService.delete(id).subscribe({
-      next: () => { this.toast.success('Professor excluído'); this.loadProfessores(); },
-      error: () => this.toast.error('Erro ao excluir professor')
+  deletar(prof: ProfessorDto): void {
+    this.deletingProfessor.set(prof);
+    this.showDeleteModal.set(true);
+  }
+
+  confirmarExclusao(): void {
+    const prof = this.deletingProfessor();
+    if (!prof) return;
+    this.excluindo.set(true);
+    this.professoresService.delete(prof.id).subscribe({
+      next: () => { this.toast.success('Professor excluído'); this.loadProfessores(); this.showDeleteModal.set(false); this.deletingProfessor.set(null); this.excluindo.set(false); },
+      error: () => { this.toast.error('Erro ao excluir professor'); this.excluindo.set(false); }
     });
   }
 

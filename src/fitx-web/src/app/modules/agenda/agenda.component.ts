@@ -2,6 +2,8 @@ import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { TreinosService } from '../../core/services/treinos.service';
+import { AuthService } from '../../core/services/auth.service';
 
 interface Aluno {
   id: string;
@@ -644,6 +646,8 @@ interface DayColumn {
 })
 export class AgendaComponent implements OnInit {
   private router = inject(Router);
+  private treinosService = inject(TreinosService);
+  private authService = inject(AuthService);
   showModal = signal(false);
   modalMode = signal<'create' | 'edit' | 'detail'>('create');
   activeTab = signal<'info' | 'exercises'>('info');
@@ -817,6 +821,25 @@ export class AgendaComponent implements OnInit {
   }
 
   private generateSampleTreinos(): void {
+    this.treinosService.getAll().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          const mapped = res.data.map(t => ({
+            id: t.id,
+            alunoId: t.alunoId,
+            alunoNome: t.alunoNome,
+            data: this.formatDate(new Date(t.dataInicio)),
+            horario: '08:00',
+            tipo: t.nome,
+            descricao: t.descricao || '',
+            observacoes: '',
+            status: 'Agendado' as const,
+            exercicios: []
+          }));
+          this.treinos.set(mapped);
+        }
+      }
+    });
   }
 
   private formatDate(date: Date): string {

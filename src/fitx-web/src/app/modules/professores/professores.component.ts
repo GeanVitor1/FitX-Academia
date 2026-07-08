@@ -51,7 +51,7 @@ import { RouterModule } from '@angular/router';
         <div class="students-section">
           <div class="section-header">
             <h2>Meus Alunos</h2>
-            <a routerLink="/professores/alunos" class="view-all">Ver todos →</a>
+            <a routerLink="/alunos" class="view-all">Ver todos →</a>
           </div>
           <div class="students-list">
             @for (student of students; track student.id) {
@@ -71,7 +71,6 @@ import { RouterModule } from '@angular/router';
                 <div class="student-actions">
                   <button class="action-btn" title="Ver treino">📋</button>
                   <button class="action-btn" title="Avaliação">📊</button>
-                  <button class="action-btn" title="Mensagem">💬</button>
                 </div>
               </div>
             }
@@ -117,7 +116,7 @@ import { RouterModule } from '@angular/router';
             <span class="action-icon">💬</span>
             <span class="action-text">Mensagens</span>
           </a>
-          <a routerLink="/professores/alunos" class="action-card">
+          <a routerLink="/alunos" class="action-card">
             <span class="action-icon">👥</span>
             <span class="action-text">Ver Alunos</span>
           </a>

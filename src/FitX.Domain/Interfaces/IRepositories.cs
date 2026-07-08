@@ -17,6 +17,7 @@ public interface IAlunoRepository : IRepository<Aluno>
     Task<IEnumerable<Aluno>> GetAllWithDetailsAsync();
     Task<IEnumerable<Aluno>> GetByProfessorIdAsync(Guid professorId);
     Task<IEnumerable<Aluno>> GetByStatusAsync(StatusAluno status);
+    Task<bool> EmailExistsAsync(string email);
 }
 
 public interface IProfessorRepository : IRepository<Professor>
@@ -31,6 +32,7 @@ public interface ITreinoRepository : IRepository<Treino>
     Task<Treino?> GetDetailedByIdAsync(Guid id);
     Task<IEnumerable<Treino>> GetByAlunoIdAsync(Guid alunoId);
     Task<IEnumerable<Treino>> GetByProfessorIdAsync(Guid professorId);
+    Task<IEnumerable<Treino>> GetAllWithDetailsAsync();
 }
 
 public interface ICheckinRepository : IRepository<Checkin>

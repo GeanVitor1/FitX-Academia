@@ -96,7 +96,8 @@ public class PlanoService
             DuracaoDias = plano.DuracaoDias,
             PermitePersonal = plano.PermitePersonal,
             PermiteAulas = plano.PermiteAulas,
-            Ativo = plano.Ativo
+            Ativo = plano.Ativo,
+            TotalAlunos = plano.Alunos?.Count ?? 0
         };
     }
 }

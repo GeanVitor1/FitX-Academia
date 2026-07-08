@@ -67,3 +67,21 @@ public class ExercicioDto
     public string? VideoUrl { get; set; }
     public string? ImagemUrl { get; set; }
 }
+
+public class CreateExercicioDto
+{
+    public string Nome { get; set; } = string.Empty;
+    public GrupoMuscular GrupoMuscular { get; set; }
+    public string? Descricao { get; set; }
+    public string? VideoUrl { get; set; }
+    public string? ImagemUrl { get; set; }
+}
+
+public class UpdateExercicioDto
+{
+    public string? Nome { get; set; }
+    public GrupoMuscular? GrupoMuscular { get; set; }
+    public string? Descricao { get; set; }
+    public string? VideoUrl { get; set; }
+    public string? ImagemUrl { get; set; }
+}

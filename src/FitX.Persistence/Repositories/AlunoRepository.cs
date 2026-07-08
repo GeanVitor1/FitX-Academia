@@ -62,4 +62,9 @@ public class AlunoRepository : Repository<Aluno>, IAlunoRepository
             .Where(a => a.Status == status && a.Ativo)
             .ToListAsync();
     }
+
+    public async Task<bool> EmailExistsAsync(string email)
+    {
+        return await _dbSet.AnyAsync(a => a.Usuario.Email == email && a.Ativo);
+    }
 }

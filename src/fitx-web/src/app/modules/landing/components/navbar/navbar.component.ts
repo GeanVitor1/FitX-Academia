@@ -1,7 +1,8 @@
-import { Component, signal, HostListener, inject } from '@angular/core';
+import { Component, signal, HostListener, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import { QuickLoginAccount } from '../../../../core/models/auth.models';
 import { ToastService } from '../../../../shared/services/toast.service';
 
 @Component({
@@ -192,7 +193,7 @@ import { ToastService } from '../../../../shared/services/toast.service';
     }
   `]
 })
-export class NavbarComponent {
+export class NavbarComponent implements OnInit {
   isScrolled = signal(false);
   menuOpen = signal(false);
 
@@ -200,12 +201,26 @@ export class NavbarComponent {
   private toastService = inject(ToastService);
   private router = inject(Router);
 
-  private accounts: Record<string, { email: string; password: string; route: string }> = {
-    'Admin': { email: 'admin@fitx.com', password: 'Admin@123', route: '/admin' },
-    'Professor': { email: 'professor@fitx.com', password: 'Professor@123', route: '/alunos' },
-    'Recepcionista': { email: 'recepcionista@fitx.com', password: 'Recepcao@123', route: '/recepcao' },
-    'Aluno': { email: 'aluno@fitx.com', password: 'Aluno@123', route: '/dashboard' }
+  private accountsByRole: Record<string, QuickLoginAccount> = {};
+  private routesByRole: Record<string, string> = {
+    'Admin': '/admin',
+    'Professor': '/professores',
+    'Recepcionista': '/recepcao',
+    'Aluno': '/dashboard',
+    'Financeiro': '/financeiro'
   };
+
+  ngOnInit(): void {
+    this.authService.getQuickLogins().subscribe({
+      next: (response) => {
+        if (response.success) {
+          for (const acc of response.accounts) {
+            this.accountsByRole[acc.role] = acc;
+          }
+        }
+      }
+    });
+  }
 
   @HostListener('window:scroll')
   onScroll(): void {
@@ -217,19 +232,20 @@ export class NavbarComponent {
   }
 
   quickLogin(role: string): void {
-    const account = this.accounts[role];
+    const account = this.accountsByRole[role];
     if (!account) return;
 
-    this.authService.login({ email: account.email, password: account.password })
+    this.authService.quickLogin(account.email)
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success('Acesso demo: ' + role);
-            this.router.navigate([account.route]);
+            this.toastService.success('Acesso: ' + account.nome);
+            this.router.navigate([this.routesByRole[role] || '/dashboard']);
           }
         },
-        error: () => {
-          this.toastService.error('Erro ao acessar demo');
+        error: (err) => {
+          const msg = err.error?.error || err.error?.errors?.join(', ') || 'Erro ao acessar';
+          this.toastService.error(msg);
         }
       });
   }
