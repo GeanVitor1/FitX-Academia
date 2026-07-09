@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using FitX.Application.DTOs;
 using FitX.Application.Services;
-using FitX.Domain.Interfaces;
-using FitX.Persistence.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

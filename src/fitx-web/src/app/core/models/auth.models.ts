@@ -27,23 +27,6 @@ export interface RegisterRequest {
   confirmPassword: string;
 }
 
-export interface ResponseDto<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  errors?: string[];
-}
-
-export interface PagedResult<T> {
-  items: T[];
-  totalCount: number;
-  pageNumber: number;
-  pageSize: number;
-  totalPages: number;
-  hasPrevious: boolean;
-  hasNext: boolean;
-}
-
 export interface QuickLoginAccount {
   email: string;
   nome: string;

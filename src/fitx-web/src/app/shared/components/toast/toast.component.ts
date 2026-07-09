@@ -7,11 +7,12 @@ import { ToastService } from '../../services/toast.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="toast-container">
+    <div class="toast-container" aria-live="polite" aria-atomic="true">
       @for (toast of toastService.toasts$(); track toast.id) {
-        <div class="toast" [class]="'toast-' + toast.type">
+        <div class="toast" [class]="'toast-' + toast.type" role="alert">
+          <span class="toast-icon">{{ iconFor(toast.type) }}</span>
           <span class="toast-message">{{ toast.message }}</span>
-          <button class="toast-close" (click)="toastService.dismiss(toast.id)">&times;</button>
+          <button type="button" class="toast-close" (click)="toastService.dismiss(toast.id)" aria-label="Fechar">&times;</button>
         </div>
       }
     </div>
@@ -25,42 +26,58 @@ import { ToastService } from '../../services/toast.service';
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+      max-width: min(420px, calc(100vw - 2rem));
+      pointer-events: none;
     }
 
     .toast {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1rem 1.5rem;
-      border-radius: var(--radius-md);
-      backdrop-filter: blur(10px);
-      animation: fitx-slide-in 0.3s ease, fitx-slide-out 0.3s ease forwards;
-      min-width: 300px;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      animation: toast-in 0.28s ease forwards;
+      min-width: 280px;
+      pointer-events: auto;
     }
 
     .toast-success {
-      background: color-mix(in srgb, var(--color-success) 90%, transparent);
-      color: var(--color-text);
+      background: #14532d;
+      border-color: rgba(34, 197, 94, 0.45);
+      color: #f0fdf4;
     }
 
     .toast-error {
-      background: color-mix(in srgb, var(--color-danger) 90%, transparent);
-      color: var(--color-text);
+      background: #7f1d1d;
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #fef2f2;
     }
 
     .toast-warning {
-      background: color-mix(in srgb, var(--color-warning) 90%, transparent);
-      color: var(--color-text);
+      background: #78350f;
+      border-color: rgba(234, 179, 8, 0.45);
+      color: #fffbeb;
     }
 
     .toast-info {
-      background: color-mix(in srgb, var(--color-info) 90%, transparent);
-      color: var(--color-text);
+      background: #1e3a5f;
+      border-color: rgba(59, 130, 246, 0.45);
+      color: #eff6ff;
+    }
+
+    .toast-icon {
+      flex-shrink: 0;
+      font-size: 1rem;
+      line-height: 1.4;
     }
 
     .toast-message {
+      flex: 1;
       font-size: 0.875rem;
       font-weight: 500;
+      line-height: 1.4;
     }
 
     .toast-close {
@@ -70,38 +87,36 @@ import { ToastService } from '../../services/toast.service';
       font-size: 1.25rem;
       cursor: pointer;
       padding: 0;
-      margin-left: 1rem;
-      opacity: 0.8;
-      transition: opacity 0.2s ease;
+      line-height: 1;
+      opacity: 0.75;
+      flex-shrink: 0;
     }
 
     .toast-close:hover {
       opacity: 1;
     }
 
-    @keyframes fitx-slide-in {
+    @keyframes toast-in {
       from {
-        transform: translateX(100%);
+        transform: translateX(120%);
         opacity: 0;
       }
       to {
         transform: translateX(0);
         opacity: 1;
-      }
-    }
-
-    @keyframes fitx-slide-out {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
       }
     }
   `]
 })
 export class ToastComponent {
   toastService = inject(ToastService);
+
+  iconFor(type: string): string {
+    switch (type) {
+      case 'success': return '✓';
+      case 'error': return '✕';
+      case 'warning': return '!';
+      default: return 'i';
+    }
+  }
 }

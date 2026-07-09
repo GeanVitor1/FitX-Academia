@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnDestroy, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -29,9 +29,9 @@ interface StatItem {
         <div class="stats-grid">
           @for (stat of stats; track stat.label) {
             <div class="stat-card">
-              <div class="stat-icon">{{ getIcon(stat.label) }}</div>
-              <div class="stat-value">
-                {{ stat.current }}{{ stat.suffix }}
+              <div class="stat-top">
+                <span class="stat-icon">{{ getIcon(stat.label) }}</span>
+                <span class="stat-value">{{ displayValue(stat) }}{{ stat.suffix }}</span>
               </div>
               <div class="stat-label">{{ stat.label }}</div>
               <div class="stat-bar">
@@ -43,36 +43,24 @@ interface StatItem {
 
         <div class="stats-visual">
           <div class="visual-card">
-            <div class="card-image">
-              <div class="image-placeholder">
-                <span class="placeholder-icon">🏋️</span>
-              </div>
-            </div>
-            <div class="card-content">
+            <span class="visual-icon">🏋️</span>
+            <div class="visual-text">
               <h3>Transformação Real</h3>
               <p>Veja os resultados dos nossos alunos</p>
             </div>
           </div>
 
           <div class="visual-card featured">
-            <div class="card-image">
-              <div class="image-placeholder">
-                <span class="placeholder-icon">💪</span>
-              </div>
-            </div>
-            <div class="card-content">
+            <span class="visual-icon">💪</span>
+            <div class="visual-text">
               <h3>Alunos Ativos</h3>
               <p>Junte-se a eles</p>
             </div>
           </div>
 
           <div class="visual-card">
-            <div class="card-image">
-              <div class="image-placeholder">
-                <span class="placeholder-icon">🎯</span>
-              </div>
-            </div>
-            <div class="card-content">
+            <span class="visual-icon">🎯</span>
+            <div class="visual-text">
               <h3>Metas Alcançadas</h3>
               <p>Sua vez de conquistar</p>
             </div>
@@ -83,38 +71,39 @@ interface StatItem {
   `,
   styles: [`
     .stats-section {
-      padding: 8rem 2rem;
+      padding: 3.5rem 1.25rem;
       background: var(--color-bg);
       position: relative;
     }
 
     .stats-container {
-      max-width: 1400px;
+      max-width: 900px;
       margin: 0 auto;
     }
 
     .section-header {
       text-align: center;
-      margin-bottom: 4rem;
+      margin-bottom: 1.5rem;
     }
 
     .section-tag {
       display: inline-block;
       background: color-mix(in srgb, var(--color-primary) 10%, transparent);
       color: var(--color-primary);
-      padding: 0.5rem 1rem;
+      padding: 0.3rem 0.75rem;
       border-radius: 2rem;
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       font-weight: 600;
-      letter-spacing: 2px;
-      margin-bottom: 1rem;
+      letter-spacing: 1.5px;
+      margin-bottom: 0.5rem;
     }
 
     .section-title {
-      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-size: clamp(1.35rem, 3vw, 1.85rem);
       font-weight: 800;
       color: var(--color-text);
       margin: 0;
+      line-height: 1.2;
     }
 
     .highlight {
@@ -124,46 +113,54 @@ interface StatItem {
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 2rem;
-      margin-bottom: 4rem;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
     }
 
     .stat-card {
       background: var(--color-bg-elevated);
       border: 1px solid var(--color-border);
-      border-radius: 1rem;
-      padding: 2rem;
-      text-align: center;
-      transition: all 0.2s ease;
+      border-radius: 0.625rem;
+      padding: 0.875rem 0.75rem;
+      text-align: left;
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
     .stat-card:hover {
-      transform: translateY(-5px);
+      transform: translateY(-2px);
       border-color: var(--color-primary);
-      box-shadow: 0 20px 40px color-mix(in srgb, var(--color-primary) 10%, transparent);
+    }
+
+    .stat-top {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
     }
 
     .stat-icon {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
+      font-size: 1rem;
+      line-height: 1;
+      flex-shrink: 0;
     }
 
     .stat-value {
-      font-size: 3rem;
-      font-weight: 900;
+      font-size: 1.35rem;
+      font-weight: 800;
       color: var(--color-primary);
-      margin-bottom: 0.5rem;
+      line-height: 1;
     }
 
     .stat-label {
-      font-size: 0.875rem;
+      font-size: 0.6rem;
       color: var(--color-text-secondary);
-      letter-spacing: 2px;
-      margin-bottom: 1rem;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
     }
 
     .stat-bar {
-      height: 4px;
+      height: 2px;
       background: var(--color-border);
       border-radius: 2px;
       overflow: hidden;
@@ -179,70 +176,92 @@ interface StatItem {
     .stats-visual {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 2rem;
+      gap: 0.75rem;
     }
 
     .visual-card {
       background: var(--color-bg-elevated);
       border: 1px solid var(--color-border);
-      border-radius: 1rem;
-      overflow: hidden;
-      transition: all 0.2s ease;
+      border-radius: 0.625rem;
+      padding: 0.75rem 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+      min-height: 0;
     }
 
     .visual-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 20px 40px color-mix(in srgb, #000 30%, transparent);
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
     }
 
     .visual-card.featured {
       border-color: var(--color-primary);
-      box-shadow: 0 0 30px color-mix(in srgb, var(--color-primary) 10%, transparent);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 8%, transparent);
     }
 
-    .card-image {
-      height: 200px;
-      background: linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .image-placeholder {
-      width: 80px;
-      height: 80px;
-      background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    .visual-icon {
+      width: 2rem;
+      height: 2rem;
       border-radius: 50%;
-      display: flex;
+      background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      font-size: 0.9rem;
+      line-height: 1;
+      flex-shrink: 0;
     }
 
-    .placeholder-icon {
-      font-size: 2rem;
+    .visual-text {
+      min-width: 0;
     }
 
-    .card-content {
-      padding: 1.5rem;
-    }
-
-    .card-content h3 {
-      font-size: 1.125rem;
+    .visual-text h3 {
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--color-text);
-      margin: 0 0 0.5rem 0;
+      margin: 0 0 0.15rem 0;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .card-content p {
-      font-size: 0.875rem;
+    .visual-text p {
+      font-size: 0.68rem;
       color: var(--color-text-secondary);
       margin: 0;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 720px) {
+      .stats-section {
+        padding: 2.5rem 1rem;
+      }
+
       .stats-grid,
       .stats-visual {
         grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+
+      .stat-card,
+      .visual-card {
+        padding: 0.75rem;
+      }
+
+      .stat-value {
+        font-size: 1.25rem;
+      }
+
+      .visual-text h3 {
+        white-space: normal;
       }
     }
   `]
@@ -269,7 +288,12 @@ export class StatsComponent implements AfterViewInit, OnDestroy {
     return icons[label] || '📊';
   }
 
+  displayValue(stat: StatItem): number {
+    return Math.round(stat.current);
+  }
+
   getProgress(stat: StatItem): number {
+    if (!stat.value) return 0;
     return (stat.current / stat.value) * 100;
   }
 

@@ -2,32 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ResponseDto } from '../models/models';
+import {
+  ResponseDto,
+  EquipamentoDto,
+  CreateEquipamentoDto,
+  UpdateEquipamentoDto
+} from '../models/models';
 
-export interface EquipamentoDto {
-  id: string;
-  nome: string;
-  categoria: string;
-  localizacao?: string;
-  status: string;
-  ultimaManutencao?: string;
-  ativo: boolean;
-}
-
-export interface CreateEquipamentoDto {
-  nome: string;
-  categoria: string;
-  localizacao?: string;
-  ultimaManutencao?: string;
-}
-
-export interface UpdateEquipamentoDto {
-  nome?: string;
-  categoria?: string;
-  localizacao?: string;
-  status?: string;
-  ultimaManutencao?: string;
-}
+export type { EquipamentoDto, CreateEquipamentoDto, UpdateEquipamentoDto };
 
 @Injectable({ providedIn: 'root' })
 export class EquipamentosService {

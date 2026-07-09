@@ -6,9 +6,10 @@ const AUTH_SKIP_URLS = [
   '/login',
   '/register',
   '/refresh',
-  '/revoke',
   '/forgot-password',
-  '/reset-password'
+  '/reset-password',
+  '/quick-login',
+  '/quick-logins'
 ];
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {

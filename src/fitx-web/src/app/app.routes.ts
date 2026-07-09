@@ -1,8 +1,6 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './layout/layout.component';
 import { AuthGuard } from './core/guards/auth.guard';
-import { ForgotPasswordComponent } from './modules/auth/forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './modules/auth/reset-password/reset-password.component';
 
 export const routes: Routes = [
   {
@@ -22,11 +20,17 @@ export const routes: Routes = [
       },
       {
         path: 'forgot-password',
-        component: ForgotPasswordComponent
+        loadComponent: () =>
+          import('./modules/auth/forgot-password/forgot-password.component').then(
+            m => m.ForgotPasswordComponent
+          )
       },
       {
         path: 'reset-password',
-        component: ResetPasswordComponent
+        loadComponent: () =>
+          import('./modules/auth/reset-password/reset-password.component').then(
+            m => m.ResetPasswordComponent
+          )
       },
       {
         path: '',
@@ -39,6 +43,7 @@ export const routes: Routes = [
     path: '',
     component: LayoutComponent,
     canActivate: [AuthGuard],
+    canActivateChild: [AuthGuard],
     children: [
       // Dashboard - todas as roles
       {

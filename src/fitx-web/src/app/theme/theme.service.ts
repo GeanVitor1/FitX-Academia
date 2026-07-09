@@ -24,7 +24,7 @@ export class ThemeService {
   }
 
   toggleTheme(): void {
-    this.theme.update(t => t === 'dark' ? 'light' : 'dark');
+    this.setTheme(this.theme() === 'dark' ? 'light' : 'dark');
   }
 
   setTheme(theme: 'dark' | 'light'): void {

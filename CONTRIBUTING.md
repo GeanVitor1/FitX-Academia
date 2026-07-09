@@ -39,15 +39,17 @@ Este projeto adota um Código de Conduta. Ao participar, você concorda em mante
 ## Ambiente de Desenvolvimento
 
 ```bash
-# Front-end
+# Back-end (terminal 1) — http://localhost:5169
+dotnet restore FitX.sln
+dotnet run --project src/FitX.API
+
+# Front-end (terminal 2) — http://localhost:4200
 cd src/fitx-web
 npm install
 npm start
-
-# Back-end
-dotnet restore
-dotnet run --project src/FitX.API
 ```
+
+Contas demo e roteiro de demonstração: [docs/DEMO.md](docs/DEMO.md) · arquitetura: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Dúvidas?
 

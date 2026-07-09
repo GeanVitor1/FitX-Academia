@@ -43,3 +43,9 @@ TestResults/
 ## Environment
 .env
 .env.local
+
+## SQLite side files (keep FitX.db optional for demo seed; never commit WAL/SHM)
+*.db-shm
+*.db-wal
+**/FitX.db-shm
+**/FitX.db-wal

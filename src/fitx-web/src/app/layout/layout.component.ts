@@ -1,7 +1,8 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
+import { NotificacoesService } from '../core/services/notificacoes.service';
 import { ThemeService } from '../theme/theme.service';
 import { FooterComponent } from './footer/footer.component';
 
@@ -72,7 +73,7 @@ import { FooterComponent } from './footer/footer.component';
             </a>
           }
 
-          @if (authService.isAdmin() || authService.isProfessor() || authService.isRecepcionista()) {
+          @if (authService.isAdmin() || authService.isProfessor() || authService.isRecepcionista() || authService.isAluno()) {
             <a routerLink="/checkin" routerLinkActive="active" class="nav-item" [title]="sidebarCollapsed() ? 'Check-in' : ''">
               <span class="nav-icon">◇</span>
               @if (!sidebarCollapsed()) {
@@ -102,6 +103,13 @@ import { FooterComponent } from './footer/footer.component';
           @if (authService.isAdmin()) {
             <div class="nav-divider"></div>
             <span class="nav-section">Administração</span>
+
+            <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-item" [title]="sidebarCollapsed() ? 'Admin' : ''">
+              <span class="nav-icon">⚙</span>
+              @if (!sidebarCollapsed()) {
+                <span class="nav-text">Administração</span>
+              }
+            </a>
 
             <a routerLink="/admin/planos" routerLinkActive="active" class="nav-item" [title]="sidebarCollapsed() ? 'Planos' : ''">
               <span class="nav-icon">▥</span>
@@ -161,6 +169,9 @@ import { FooterComponent } from './footer/footer.component';
             <span class="nav-icon">⊛</span>
             @if (!sidebarCollapsed()) {
               <span class="nav-text">Notificações</span>
+            }
+            @if (unreadCount() > 0) {
+              <span class="nav-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
             }
           </a>
 
@@ -393,6 +404,7 @@ import { FooterComponent } from './footer/footer.component';
     }
 
     .nav-item {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -408,6 +420,7 @@ import { FooterComponent } from './footer/footer.component';
       width: 100%;
       text-align: left;
       white-space: nowrap;
+      overflow: visible;
     }
 
     .nav-item:hover {
@@ -439,6 +452,32 @@ import { FooterComponent } from './footer/footer.component';
       font-weight: 500;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--green);
+      color: var(--black-900);
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 9px;
+      line-height: 1;
+    }
+
+    .sidebar-collapsed .nav-badge {
+      position: absolute;
+      top: 4px;
+      right: 8px;
+      min-width: 14px;
+      height: 14px;
+      font-size: 9px;
+      padding: 0 3px;
     }
 
     .sidebar-footer {
@@ -789,14 +828,44 @@ import { FooterComponent } from './footer/footer.component';
     }
   `]
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  private notificacoesService = inject(NotificacoesService);
 
   sidebarCollapsed = signal(false);
+  unreadCount = signal(0);
+
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  ngOnInit(): void {
+    this.loadUnreadCount();
+    this.pollTimer = setInterval(() => this.loadUnreadCount(), 60_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
 
   toggleSidebar(): void {
     this.sidebarCollapsed.update(v => !v);
+  }
+
+  private loadUnreadCount(): void {
+    // silent: badge de fundo não deve spammar toast se falhar
+    this.notificacoesService.countNaoLidas({ silent: true }).subscribe({
+      next: res => {
+        if (res.success && typeof res.data === 'number') {
+          this.unreadCount.set(res.data);
+        }
+      },
+      error: () => {
+        /* silent: badge is non-critical */
+      }
+    });
   }
 
   getInitials(): string {

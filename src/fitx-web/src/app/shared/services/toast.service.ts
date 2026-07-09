@@ -16,10 +16,20 @@ export class ToastService {
   toasts$ = this.toasts.asReadonly();
 
   show(message: string, type: Toast['type'] = 'info'): void {
-    const id = ++this.counter;
-    this.toasts.update(toasts => [...toasts, { id, message, type }]);
+    const text = (message || '').trim();
+    if (!text) return;
 
-    setTimeout(() => this.dismiss(id), 5000);
+    // Evita spam do mesmo toast em sequência (ex.: várias requisições falhando)
+    const existing = this.toasts();
+    if (existing.some(t => t.message === text && t.type === type)) {
+      return;
+    }
+
+    const id = ++this.counter;
+    this.toasts.update(toasts => [...toasts, { id, message: text, type }]);
+
+    const duration = type === 'error' ? 6500 : 4500;
+    setTimeout(() => this.dismiss(id), duration);
   }
 
   success(message: string): void {

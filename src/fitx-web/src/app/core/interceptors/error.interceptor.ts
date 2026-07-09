@@ -1,20 +1,81 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError, Subject } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../../shared/services/toast.service';
+import { SKIP_ERROR_TOAST } from '../http/http-context.tokens';
 
 let isRefreshing = false;
 let refreshSubject: Subject<boolean> | null = null;
 
+function extractErrorMessage(error: HttpErrorResponse): string {
+  const body = error.error;
+
+  if (typeof body === 'string' && body.trim()) {
+    return body.trim();
+  }
+
+  if (body && typeof body === 'object') {
+    if (typeof body.message === 'string' && body.message.trim()) {
+      return body.message.trim();
+    }
+    if (typeof body.error === 'string' && body.error.trim()) {
+      return body.error.trim();
+    }
+    if (typeof body.title === 'string' && body.title.trim()) {
+      return body.title.trim();
+    }
+    if (Array.isArray(body.errors) && body.errors.length) {
+      const first = body.errors[0];
+      if (typeof first === 'string') return first;
+      if (first?.message) return String(first.message);
+    }
+    if (body.errors && typeof body.errors === 'object' && !Array.isArray(body.errors)) {
+      const values = Object.values(body.errors).flat();
+      const first = values.find(v => typeof v === 'string' || (Array.isArray(v) && v[0]));
+      if (typeof first === 'string') return first;
+      if (Array.isArray(first) && first[0]) return String(first[0]);
+    }
+  }
+
+  switch (error.status) {
+    case 0:
+      return 'Sem conexão com o servidor. Verifique sua internet.';
+    case 400:
+      return 'Requisição inválida. Verifique os dados e tente novamente.';
+    case 401:
+      return 'Sessão expirada. Faça login novamente.';
+    case 403:
+      return 'Você não tem permissão para esta ação.';
+    case 404:
+      return 'Recurso não encontrado.';
+    case 409:
+      return 'Conflito ao processar a solicitação.';
+    case 422:
+      return 'Dados inválidos. Verifique o formulário.';
+    case 429:
+      return 'Muitas tentativas. Aguarde um momento e tente de novo.';
+    default:
+      if (error.status >= 500) {
+        return 'Erro interno do servidor. Tente novamente em instantes.';
+      }
+      return error.message || 'Ocorreu um erro inesperado.';
+  }
+}
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const toast = inject(ToastService);
+  const skipToast = req.context.get(SKIP_ERROR_TOAST);
 
   return next(req).pipe(
     catchError(error => {
+      if (!(error instanceof HttpErrorResponse)) {
+        return throwError(() => error);
+      }
+
       if (error.status === 401) {
-        if (req.url.includes('/auth/refresh') || req.url.includes('/auth/revoke')) {
+        if (req.url.includes('/auth/refresh')) {
           return throwError(() => error);
         }
 
@@ -42,6 +103,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
               localStorage.removeItem('token');
               localStorage.removeItem('refreshToken');
               localStorage.removeItem('user');
+              if (!skipToast) {
+                toast.error('Sessão expirada. Faça login novamente.');
+              }
               window.location.href = '/auth/login';
               return throwError(() => refreshError);
             })
@@ -62,17 +126,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         );
       }
 
-      if (error.status === 403) {
-        toast.error('Acesso negado');
-      } else if (error.status === 400) {
-        const message = error.error?.message || error.error?.error || error.error?.errors?.[0];
-        if (message) {
-          toast.error(message);
-        }
-      } else if (error.status === 0) {
-        toast.error('Erro de conexão com o servidor');
-      } else if (error.status >= 500) {
-        toast.error('Erro interno do servidor');
+      if (!skipToast && error.status !== 401) {
+        toast.error(extractErrorMessage(error));
       }
 
       return throwError(() => error);

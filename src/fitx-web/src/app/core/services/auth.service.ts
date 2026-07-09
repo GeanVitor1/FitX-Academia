@@ -37,6 +37,18 @@ export class AuthService {
     if (token && refreshToken && userJson) {
       this.token.set(token);
       this.currentUser.set(JSON.parse(userJson));
+      // Refresh profile in background when session is restored
+      this.getCurrentUser().subscribe({
+        next: user => {
+          if (user) {
+            this.currentUser.set(user);
+            localStorage.setItem('user', JSON.stringify(user));
+          }
+        },
+        error: () => {
+          /* keep cached user if /me is unavailable */
+        }
+      });
     }
   }
 

@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FitX.Persistence.Migrations
 {
     [DbContext(typeof(FitXDbContext))]
-    [Migration("20260708124812_AddMensagens")]
-    partial class AddMensagens
+    [Migration("20260709140141_AddCheckinRequests")]
+    partial class AddCheckinRequests
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -280,6 +280,46 @@ namespace FitX.Persistence.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("Checkins", (string)null);
+                });
+
+            modelBuilder.Entity("FitX.Domain.Entities.CheckinRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AlunoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RespondidaEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RespondidaPorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlunoId");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.HasIndex("RespondidaPorId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("CheckinRequests", (string)null);
                 });
 
             modelBuilder.Entity("FitX.Domain.Entities.Equipamento", b =>
@@ -597,59 +637,6 @@ namespace FitX.Persistence.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Logs", (string)null);
-                });
-
-            modelBuilder.Entity("FitX.Domain.Entities.Mensagem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Conteudo")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ConversaId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DestinatarioId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("EnviadaEm")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Lida")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("LidaEm")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("RemetenteId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConversaId");
-
-                    b.HasIndex("DestinatarioId");
-
-                    b.HasIndex("EnviadaEm");
-
-                    b.HasIndex("Lida");
-
-                    b.HasIndex("RemetenteId");
-
-                    b.ToTable("Mensagens", (string)null);
                 });
 
             modelBuilder.Entity("FitX.Domain.Entities.Mensalidade", b =>
@@ -1456,6 +1443,24 @@ namespace FitX.Persistence.Migrations
                     b.Navigation("Aluno");
                 });
 
+            modelBuilder.Entity("FitX.Domain.Entities.CheckinRequest", b =>
+                {
+                    b.HasOne("FitX.Domain.Entities.Aluno", "Aluno")
+                        .WithMany()
+                        .HasForeignKey("AlunoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FitX.Domain.Entities.Usuario", "RespondidaPor")
+                        .WithMany()
+                        .HasForeignKey("RespondidaPorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Aluno");
+
+                    b.Navigation("RespondidaPor");
+                });
+
             modelBuilder.Entity("FitX.Domain.Entities.Funcionario", b =>
                 {
                     b.HasOne("FitX.Domain.Entities.Usuario", "Usuario")
@@ -1486,25 +1491,6 @@ namespace FitX.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("FitX.Domain.Entities.Mensagem", b =>
-                {
-                    b.HasOne("FitX.Domain.Entities.Usuario", "Destinatario")
-                        .WithMany("MensagensRecebidas")
-                        .HasForeignKey("DestinatarioId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("FitX.Domain.Entities.Usuario", "Remetente")
-                        .WithMany("MensagensEnviadas")
-                        .HasForeignKey("RemetenteId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Destinatario");
-
-                    b.Navigation("Remetente");
                 });
 
             modelBuilder.Entity("FitX.Domain.Entities.Mensalidade", b =>
@@ -1730,10 +1716,6 @@ namespace FitX.Persistence.Migrations
                     b.Navigation("Funcionario");
 
                     b.Navigation("Logs");
-
-                    b.Navigation("MensagensEnviadas");
-
-                    b.Navigation("MensagensRecebidas");
 
                     b.Navigation("Notificacoes");
 

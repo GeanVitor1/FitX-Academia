@@ -19,5 +19,4 @@ public class Aluno : BaseEntity
     public ICollection<Mensalidade> Mensalidades { get; set; } = new List<Mensalidade>();
     public ICollection<Checkin> Checkins { get; set; } = new List<Checkin>();
     public ICollection<Agendamento> Agendamentos { get; set; } = new List<Agendamento>();
-    public ICollection<Historico> Historicos { get; set; } = new List<Historico>();
 }

@@ -1,13 +1,18 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ResponseDto, NotificacaoDto, CreateNotificacaoDto } from '../models/models';
+import { SKIP_ERROR_TOAST } from '../http/http-context.tokens';
 
 @Injectable({ providedIn: 'root' })
 export class NotificacoesService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/notificacoes`;
+
+  private silentContext(): HttpContext {
+    return new HttpContext().set(SKIP_ERROR_TOAST, true);
+  }
 
   getAll(): Observable<ResponseDto<NotificacaoDto[]>> {
     return this.http.get<ResponseDto<NotificacaoDto[]>>(this.apiUrl);
@@ -17,8 +22,10 @@ export class NotificacoesService {
     return this.http.get<ResponseDto<NotificacaoDto[]>>(`${this.apiUrl}/nao-lidas`);
   }
 
-  countNaoLidas(): Observable<ResponseDto<number>> {
-    return this.http.get<ResponseDto<number>>(`${this.apiUrl}/count-nao-lidas`);
+  countNaoLidas(options?: { silent?: boolean }): Observable<ResponseDto<number>> {
+    return this.http.get<ResponseDto<number>>(`${this.apiUrl}/count-nao-lidas`, {
+      context: options?.silent ? this.silentContext() : undefined
+    });
   }
 
   create(dto: CreateNotificacaoDto): Observable<ResponseDto<NotificacaoDto>> {

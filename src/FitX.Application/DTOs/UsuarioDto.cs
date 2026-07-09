@@ -15,15 +15,6 @@ public class UsuarioDto
     public DateTime? UltimoLogin { get; set; }
 }
 
-public class CreateUsuarioDto
-{
-    public string Nome { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public UserRole Role { get; set; }
-    public string? Telefone { get; set; }
-}
-
 public class UpdateUsuarioDto
 {
     public string? Nome { get; set; }

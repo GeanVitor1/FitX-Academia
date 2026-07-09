@@ -27,7 +27,7 @@ public class CheckinsController : ControllerBase
     }
 
     [HttpPost("checkout/{alunoId:guid}")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,Recepcionista,Aluno")]
     public async Task<ActionResult<ResponseDto<CheckinDto>>> Checkout(Guid alunoId)
     {
         var result = await _checkinService.CheckoutAsync(alunoId);
@@ -49,4 +49,65 @@ public class CheckinsController : ControllerBase
         var result = await _checkinService.GetByAlunoIdAsync(alunoId);
         return Ok(result);
     }
+
+    [HttpPost("request/{alunoId:guid}")]
+    [Authorize(Roles = "Aluno")]
+    public async Task<ActionResult<ResponseDto<CheckinRequestDto>>> CreateRequest(Guid alunoId)
+    {
+        var result = await _checkinService.CreateRequestAsync(alunoId);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpGet("requests/pending")]
+    [Authorize(Roles = "Admin,Recepcionista,Professor")]
+    public async Task<ActionResult<ResponseDto<IEnumerable<CheckinRequestDto>>>> GetPendingRequests()
+    {
+        var result = await _checkinService.GetPendingRequestsAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("requests/aluno/{alunoId:guid}")]
+    public async Task<ActionResult<ResponseDto<IEnumerable<CheckinRequestDto>>>> GetRequestsByAlunoId(Guid alunoId)
+    {
+        var result = await _checkinService.GetRequestsByAlunoIdAsync(alunoId);
+        return Ok(result);
+    }
+
+    [HttpPost("requests/{requestId:guid}/approve")]
+    [Authorize(Roles = "Admin,Recepcionista,Professor")]
+    public async Task<ActionResult<ResponseDto<CheckinRequestDto>>> ApproveRequest(Guid requestId, [FromBody] ApproveRequestDto dto)
+    {
+        var result = await _checkinService.ApproveRequestAsync(requestId, dto.StaffUserId);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPost("requests/{requestId:guid}/deny")]
+    [Authorize(Roles = "Admin,Recepcionista,Professor")]
+    public async Task<ActionResult<ResponseDto<CheckinRequestDto>>> DenyRequest(Guid requestId, [FromBody] ApproveRequestDto dto)
+    {
+        var result = await _checkinService.DenyRequestAsync(requestId, dto.StaffUserId);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPost("requests/{requestId:guid}/cancel")]
+    [Authorize(Roles = "Aluno")]
+    public async Task<ActionResult<ResponseDto<CheckinRequestDto>>> CancelRequest(Guid requestId, [FromBody] CancelRequestDto dto)
+    {
+        var result = await _checkinService.CancelRequestAsync(requestId, dto.AlunoId);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+}
+
+public class ApproveRequestDto
+{
+    public Guid StaffUserId { get; set; }
+}
+
+public class CancelRequestDto
+{
+    public Guid AlunoId { get; set; }
 }

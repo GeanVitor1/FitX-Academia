@@ -1,21 +1,8 @@
-import type { User } from './auth.models';
-export type { User } from './auth.models';
-
 export interface ResponseDto<T> {
   success: boolean;
   message?: string;
   data?: T;
   errors?: string[];
-}
-
-export interface PagedResultDto<T> {
-  items: T[];
-  totalCount: number;
-  pageNumber: number;
-  pageSize: number;
-  totalPages: number;
-  hasPrevious: boolean;
-  hasNext: boolean;
 }
 
 export interface AlunoDto {
@@ -225,42 +212,15 @@ export interface CheckinDto {
   status: StatusCheckin;
 }
 
-export interface AulaDto {
-  id: string;
-  nome: string;
-  professorId: string;
-  professorNome: string;
-  horario: string;
-  diasSemana: string;
-  vagas: number;
-  vagasOcupadas: number;
-  ativa: boolean;
-  descricao?: string;
-}
-
-export interface CreateAulaDto {
-  nome: string;
-  professorId: string;
-  horario: string;
-  diasSemana: string;
-  vagas: number;
-  descricao?: string;
-}
-
-export interface AgendamentoDto {
+export interface CheckinRequestDto {
   id: string;
   alunoId: string;
   alunoNome: string;
-  aulaId: string;
-  aulaNome: string;
-  data: string;
-  status: StatusAgendamento;
-}
-
-export interface CreateAgendamentoDto {
-  alunoId: string;
-  aulaId: string;
-  data: string;
+  status: StatusCheckinRequest;
+  criadaEm: string;
+  respondidaEm?: string;
+  respondidaPor?: string;
+  respondidaPorNome?: string;
 }
 
 export interface AvaliacaoDto {
@@ -323,14 +283,6 @@ export interface UsuarioDto {
   ultimoLogin?: string;
 }
 
-export interface CreateUsuarioDto {
-  nome: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  telefone?: string;
-}
-
 export interface UpdateUsuarioDto {
   nome?: string;
   telefone?: string;
@@ -356,11 +308,45 @@ export interface RecenteAtividadeDto {
   data: string;
 }
 
+export interface EquipamentoDto {
+  id: string;
+  nome: string;
+  categoria: string;
+  localizacao?: string;
+  status: string;
+  ultimaManutencao?: string;
+  ativo: boolean;
+}
+
+export interface CreateEquipamentoDto {
+  nome: string;
+  categoria: string;
+  localizacao?: string;
+  ultimaManutencao?: string;
+}
+
+export interface UpdateEquipamentoDto {
+  nome?: string;
+  categoria?: string;
+  localizacao?: string;
+  status?: string;
+  ultimaManutencao?: string;
+}
+
+export interface RelatorioFinanceiroDto {
+  receitaTotal: number;
+  receitaMensal: number;
+  totalPagamentos: number;
+  pagamentosPendentes: number;
+  receitaPorMes: { mes: string; valor: number }[];
+  planosMaisVendidos: { planoNome: string; totalMatriculas: number; receita: number }[];
+}
+
 export type StatusAluno = 'Ativo' | 'Inativo' | 'Suspenso' | 'Pendente';
 export type StatusMensalidade = 'Aberta' | 'Paga' | 'Atrasada' | 'Cancelada';
 export type StatusPagamento = 'Pendente' | 'Pago' | 'Atrasado' | 'Cancelado';
 export type StatusCheckin = 'Presente' | 'Saiu';
-export type StatusAgendamento = 'Confirmado' | 'Pendente' | 'Cancelado' | 'Presente';
+export type StatusCheckinRequest = 'Pendente' | 'Aprovado' | 'Negado' | 'Expirado' | 'Cancelado';
 export type MetodoPagamento = 'PIX' | 'CartaoCredito' | 'CartaoDebito' | 'Boleto' | 'Dinheiro';
 export type UserRole = 'Admin' | 'Professor' | 'Aluno' | 'Recepcionista' | 'Financeiro';
 export type GrupoMuscular = 'Peito' | 'Costas' | 'Ombros' | 'Biceps' | 'Triceps' | 'Antebracos' | 'Abdomen' | 'Gluteos' | 'Quadriceps' | 'Posterior' | 'Panturrilhas' | 'FullBody';

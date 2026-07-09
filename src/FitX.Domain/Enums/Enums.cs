@@ -48,12 +48,13 @@ public enum StatusCheckin
     Saiu = 1
 }
 
-public enum StatusAula
+public enum StatusCheckinRequest
 {
-    Agendada = 0,
-    EmAndamento = 1,
-    Concluida = 2,
-    Cancelada = 3
+    Pendente = 0,
+    Aprovado = 1,
+    Negado = 2,
+    Expirado = 3,
+    Cancelado = 4
 }
 
 public enum StatusAgendamento
@@ -62,26 +63,6 @@ public enum StatusAgendamento
     Pendente = 1,
     Cancelado = 2,
     Presente = 3
-}
-
-public enum TipoHistorico
-{
-    Matricula = 0,
-    Avaliacao = 1,
-    Treino = 2,
-    Pagamento = 3,
-    Checkin = 4,
-    Evolucao = 5
-}
-
-public enum TipoLog
-{
-    Create = 0,
-    Update = 1,
-    Delete = 2,
-    Login = 3,
-    Logout = 4,
-    Access = 5
 }
 
 public enum GrupoMuscular

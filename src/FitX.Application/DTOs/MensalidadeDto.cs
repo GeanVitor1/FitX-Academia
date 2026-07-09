@@ -56,6 +56,18 @@ public class CheckinDto
     public StatusCheckin Status { get; set; }
 }
 
+public class CheckinRequestDto
+{
+    public Guid Id { get; set; }
+    public Guid AlunoId { get; set; }
+    public string AlunoNome { get; set; } = string.Empty;
+    public StatusCheckinRequest Status { get; set; }
+    public DateTime CriadaEm { get; set; }
+    public DateTime? RespondidaEm { get; set; }
+    public Guid? RespondidaPorId { get; set; }
+    public string? RespondidaPorNome { get; set; }
+}
+
 public class AulaDto
 {
     public Guid Id { get; set; }

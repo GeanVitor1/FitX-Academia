@@ -42,6 +42,13 @@ public interface ICheckinRepository : IRepository<Checkin>
     Task<IEnumerable<Checkin>> GetActiveCheckinsAsync();
 }
 
+public interface ICheckinRequestRepository : IRepository<CheckinRequest>
+{
+    Task<IEnumerable<CheckinRequest>> GetPendingAsync();
+    Task<IEnumerable<CheckinRequest>> GetByAlunoIdAsync(Guid alunoId);
+    Task<CheckinRequest?> GetActiveRequestAsync(Guid alunoId);
+}
+
 public interface IMensalidadeRepository : IRepository<Mensalidade>
 {
     Task<IEnumerable<Mensalidade>> GetByAlunoIdAsync(Guid alunoId);

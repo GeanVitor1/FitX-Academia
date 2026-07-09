@@ -1,5 +1,3 @@
-using FitX.Domain.Enums;
-
 namespace FitX.Domain.Entities;
 
 public class Aula : BaseEntity

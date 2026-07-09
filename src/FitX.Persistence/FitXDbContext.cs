@@ -13,10 +13,8 @@ public class FitXDbContext : IdentityDbContext<Usuario, IdentityRole<Guid>, Guid
     }
 
     public DbSet<Usuario> Usuarios => Set<Usuario>();
-    public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<Aluno> Alunos => Set<Aluno>();
     public DbSet<Professor> Professores => Set<Professor>();
-    public DbSet<Funcionario> Funcionarios => Set<Funcionario>();
     public DbSet<Plano> Planos => Set<Plano>();
     public DbSet<Treino> Treinos => Set<Treino>();
     public DbSet<Exercicio> Exercicios => Set<Exercicio>();
@@ -25,11 +23,10 @@ public class FitXDbContext : IdentityDbContext<Usuario, IdentityRole<Guid>, Guid
     public DbSet<Mensalidade> Mensalidades => Set<Mensalidade>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
     public DbSet<Checkin> Checkins => Set<Checkin>();
+    public DbSet<CheckinRequest> CheckinRequests => Set<CheckinRequest>();
     public DbSet<Aula> Aulas => Set<Aula>();
     public DbSet<Agendamento> Agendamentos => Set<Agendamento>();
     public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
-    public DbSet<Historico> Historicos => Set<Historico>();
-    public DbSet<Log> Logs => Set<Log>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
 

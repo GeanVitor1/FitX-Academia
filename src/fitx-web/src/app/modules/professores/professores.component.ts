@@ -1,6 +1,25 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { AuthService } from '../../core/services/auth.service';
+import { AlunosService } from '../../core/services/alunos.service';
+import { TreinosService } from '../../core/services/treinos.service';
+import { AvaliacoesService } from '../../core/services/avaliacoes.service';
+import { NotificacoesService } from '../../core/services/notificacoes.service';
+import { ToastService } from '../../shared/services/toast.service';
+import { AlunoDto, TreinoDto, AvaliacaoDto } from '../../core/models/models';
+
+const DIA_SEMANA: Record<number, string> = {
+  0: 'Dom',
+  1: 'Seg',
+  2: 'Ter',
+  3: 'Qua',
+  4: 'Qui',
+  5: 'Sex',
+  6: 'Sáb'
+};
 
 @Component({
   selector: 'app-professores',
@@ -10,118 +29,127 @@ import { RouterModule } from '@angular/router';
     <div class="professor-dashboard">
       <div class="welcome-section">
         <h1>Painel do <span class="highlight">Professor</span></h1>
-        <p>Gerencie seus alunos e treinos</p>
+        <p>Olá, {{ authService.user()?.name || 'Professor' }} — gerencie alunos e treinos</p>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">👥</div>
-          <div class="stat-info">
-            <span class="stat-value">0</span>
-            <span class="stat-label">Alunos Ativos</span>
+      @if (loading()) {
+        <div class="loading-state">Carregando painel...</div>
+      } @else {
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-value">{{ alunosAtivos() }}</span>
+              <span class="stat-label">Alunos Ativos</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-info">
+              <span class="stat-value">{{ treinos().length }}</span>
+              <span class="stat-label">Treinos Criados</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+              <span class="stat-value">{{ avaliacoes().length }}</span>
+              <span class="stat-label">Avaliações</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">💬</div>
+            <div class="stat-info">
+              <span class="stat-value">{{ unreadCount() }}</span>
+              <span class="stat-label">Não Lidas</span>
+            </div>
           </div>
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">📋</div>
-          <div class="stat-info">
-            <span class="stat-value">0</span>
-            <span class="stat-label">Treinos Criados</span>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-info">
-            <span class="stat-value">0</span>
-            <span class="stat-label">Avaliações Pendentes</span>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon">💬</div>
-          <div class="stat-info">
-            <span class="stat-value">0</span>
-            <span class="stat-label">Mensagens Não Lidas</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="main-content">
-        <div class="students-section">
-          <div class="section-header">
-            <h2>Meus Alunos</h2>
-            <a routerLink="/alunos" class="view-all">Ver todos →</a>
-          </div>
-          <div class="students-list">
-            @for (student of students; track student.id) {
-              <div class="student-card">
-                <div class="student-avatar">
-                  <span>{{ student.name.charAt(0) }}</span>
+        <div class="main-content">
+          <div class="students-section">
+            <div class="section-header">
+              <h2>Meus Alunos</h2>
+              <a routerLink="/alunos" class="view-all">Ver todos →</a>
+            </div>
+            <div class="students-list">
+              @for (student of alunosPreview(); track student.id) {
+                <div class="student-card">
+                  <div class="student-avatar">
+                    <span>{{ student.nome.charAt(0) }}</span>
+                  </div>
+                  <div class="student-info">
+                    <h4>{{ student.nome }}</h4>
+                    <p>{{ student.planoNome || 'Sem plano' }}</p>
+                  </div>
+                  <div class="student-status">
+                    <span class="status" [class.active]="student.status === 'Ativo'" [class.inactive]="student.status !== 'Ativo'">
+                      {{ student.status }}
+                    </span>
+                  </div>
+                  <div class="student-actions">
+                    <a routerLink="/professores/treinos/criar" [queryParams]="{ alunoId: student.id }" class="action-btn" title="Criar treino">📋</a>
+                    <a routerLink="/professores/avaliacoes/criar" [queryParams]="{ alunoId: student.id }" class="action-btn" title="Avaliação">📊</a>
+                  </div>
                 </div>
-                <div class="student-info">
-                  <h4>{{ student.name }}</h4>
-                  <p>{{ student.plan }}</p>
-                </div>
-                <div class="student-status">
-                  <span class="status" [class]="student.status">
-                    {{ student.status === 'active' ? 'Ativo' : 'Inativo' }}
+              } @empty {
+                <div class="empty-block">Nenhum aluno vinculado ainda.</div>
+              }
+            </div>
+          </div>
+
+          <div class="schedule-section">
+            <div class="section-header">
+              <h2>Treinos recentes</h2>
+              <a routerLink="/agenda" class="view-all">Agenda →</a>
+            </div>
+            <div class="schedule-list">
+              @for (treino of treinosPreview(); track treino.id) {
+                <div class="schedule-item">
+                  <div class="schedule-time">
+                    <span class="time">{{ DIA_SEMANA[treino.diaSemana] || '—' }}</span>
+                    <span class="day">{{ treino.ativo ? 'Ativo' : 'Inativo' }}</span>
+                  </div>
+                  <div class="schedule-info">
+                    <h4>{{ treino.nome }}</h4>
+                    <p>{{ treino.alunoNome }} · {{ treino.totalSeries }} séries</p>
+                  </div>
+                  <span class="schedule-status" [class.confirmed]="treino.ativo" [class.pending]="!treino.ativo">
+                    {{ treino.ativo ? 'Ativo' : 'Inativo' }}
                   </span>
                 </div>
-                <div class="student-actions">
-                  <button class="action-btn" title="Ver treino">📋</button>
-                  <button class="action-btn" title="Avaliação">📊</button>
-                </div>
-              </div>
-            }
+              } @empty {
+                <div class="empty-block">Nenhum treino criado ainda.</div>
+              }
+            </div>
           </div>
         </div>
 
-        <div class="schedule-section">
-          <div class="section-header">
-            <h2>Próximas Aulas</h2>
-          </div>
-          <div class="schedule-list">
-            @for (schedule of schedules; track schedule.id) {
-              <div class="schedule-item">
-                <div class="schedule-time">
-                  <span class="time">{{ schedule.time }}</span>
-                  <span class="day">{{ schedule.day }}</span>
-                </div>
-                <div class="schedule-info">
-                  <h4>{{ schedule.name }}</h4>
-                  <p>{{ schedule.students }} alunos</p>
-                </div>
-                <span class="schedule-status" [class]="schedule.status">
-                  {{ schedule.status === 'confirmed' ? 'Confirmado' : 'Pendente' }}
-                </span>
-              </div>
-            }
+        <div class="quick-actions">
+          <h3>Ações Rápidas</h3>
+          <div class="actions-grid">
+            <a routerLink="/professores/treinos/criar" class="action-card">
+              <span class="action-icon">📝</span>
+              <span class="action-text">Criar Treino</span>
+            </a>
+            <a routerLink="/professores/avaliacoes/criar" class="action-card">
+              <span class="action-icon">📊</span>
+              <span class="action-text">Nova Avaliação</span>
+            </a>
+            <a routerLink="/alunos" class="action-card">
+              <span class="action-icon">👥</span>
+              <span class="action-text">Ver Alunos</span>
+            </a>
+            <a routerLink="/agenda" class="action-card">
+              <span class="action-icon">📅</span>
+              <span class="action-text">Agenda</span>
+            </a>
           </div>
         </div>
-      </div>
-
-      <div class="quick-actions">
-        <h3>Ações Rápidas</h3>
-        <div class="actions-grid">
-          <a routerLink="/professores/treinos/criar" class="action-card">
-            <span class="action-icon">📝</span>
-            <span class="action-text">Criar Treino</span>
-          </a>
-          <a routerLink="/professores/avaliacoes/criar" class="action-card">
-            <span class="action-icon">📊</span>
-            <span class="action-text">Nova Avaliação</span>
-          </a>
-          <a routerLink="/professores/mensagens" class="action-card">
-            <span class="action-icon">💬</span>
-            <span class="action-text">Mensagens</span>
-          </a>
-          <a routerLink="/alunos" class="action-card">
-            <span class="action-icon">👥</span>
-            <span class="action-text">Ver Alunos</span>
-          </a>
-        </div>
-      </div>
+      }
     </div>
   `,
   styles: [`
@@ -147,6 +175,14 @@ import { RouterModule } from '@angular/router';
     .welcome-section p {
       color: var(--color-text-secondary);
       margin: 0;
+    }
+
+    .loading-state,
+    .empty-block {
+      text-align: center;
+      padding: 2rem;
+      color: var(--color-text-tertiary);
+      font-size: 0.875rem;
     }
 
     .stats-grid {
@@ -299,11 +335,15 @@ import { RouterModule } from '@angular/router';
     .action-btn {
       width: 32px;
       height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       background: var(--color-glass);
       border: 1px solid var(--color-glass-border);
       border-radius: 0.5rem;
       cursor: pointer;
       transition: all 0.2s;
+      text-decoration: none;
     }
 
     .action-btn:hover {
@@ -442,8 +482,74 @@ import { RouterModule } from '@angular/router';
     }
   `]
 })
-export class ProfessoresComponent {
-  students: { id: string; name: string; plan: string; status: string }[] = [];
+export class ProfessoresComponent implements OnInit {
+  readonly DIA_SEMANA = DIA_SEMANA;
 
-  schedules: { id: string; name: string; time: string; day: string; students: number; status: string }[] = [];
+  authService = inject(AuthService);
+  private alunosService = inject(AlunosService);
+  private treinosService = inject(TreinosService);
+  private avaliacoesService = inject(AvaliacoesService);
+  private notificacoesService = inject(NotificacoesService);
+  private toast = inject(ToastService);
+
+  loading = signal(true);
+  alunos = signal<AlunoDto[]>([]);
+  treinos = signal<TreinoDto[]>([]);
+  avaliacoes = signal<AvaliacaoDto[]>([]);
+  unreadCount = signal(0);
+
+  alunosAtivos = computed(() => this.alunos().filter(a => a.status === 'Ativo').length);
+  alunosPreview = computed(() => this.alunos().slice(0, 6));
+  treinosPreview = computed(() => this.treinos().slice(0, 6));
+
+  ngOnInit(): void {
+    this.loadPanel();
+  }
+
+  private loadPanel(): void {
+    this.loading.set(true);
+    const user = this.authService.user();
+    if (!user) {
+      this.loading.set(false);
+      return;
+    }
+
+    forkJoin({
+      alunos: this.alunosService.getAll().pipe(catchError(() => of({ success: false, data: [] as AlunoDto[] }))),
+      treinos: this.treinosService.getByProfessorId(user.id).pipe(
+        catchError(() =>
+          this.treinosService.getAll().pipe(catchError(() => of({ success: false, data: [] as TreinoDto[] })))
+        )
+      ),
+      avaliacoes: this.avaliacoesService.getAll().pipe(
+        catchError(() => of({ success: false, data: [] as AvaliacaoDto[] }))
+      ),
+      unread: this.notificacoesService.countNaoLidas().pipe(
+        catchError(() => of({ success: false, data: 0 }))
+      )
+    }).subscribe({
+      next: ({ alunos, treinos, avaliacoes, unread }) => {
+        const allAlunos = alunos.success && alunos.data ? alunos.data : [];
+        // Prefer students assigned to this professor when professorId is present
+        const mine = allAlunos.filter(a => a.professorId === user.id);
+        this.alunos.set(mine.length > 0 ? mine : allAlunos);
+
+        const allTreinos = treinos.success && treinos.data ? treinos.data : [];
+        this.treinos.set(allTreinos);
+
+        const allAvaliacoes = avaliacoes.success && avaliacoes.data ? avaliacoes.data : [];
+        this.avaliacoes.set(allAvaliacoes);
+
+        if (unread.success && typeof unread.data === 'number') {
+          this.unreadCount.set(unread.data);
+        }
+
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Erro ao carregar painel do professor');
+      }
+    });
+  }
 }

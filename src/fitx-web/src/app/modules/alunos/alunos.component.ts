@@ -6,7 +6,14 @@ import { AlunosService } from '../../core/services/alunos.service';
 import { PlanosService } from '../../core/services/planos.service';
 import { ProfessoresService } from '../../core/services/professores.service';
 import { ToastService } from '../../shared/services/toast.service';
-import { AlunoDto, CreateAlunoDto, UpdateAlunoDto, PlanoDto, ProfessorDto } from '../../core/models/models';
+import {
+  AlunoDto,
+  CreateAlunoDto,
+  UpdateAlunoDto,
+  PlanoDto,
+  ProfessorDto,
+  StatusAluno
+} from '../../core/models/models';
 
 @Component({
   selector: 'app-alunos',
@@ -304,8 +311,8 @@ export class AlunosComponent implements OnInit {
   }
 
   toggleStatus(aluno: AlunoDto): void {
-    const novoStatus = aluno.status === 'Ativo' ? 'Inativo' : 'Ativo';
-    this.alunosService.update(aluno.id, { status: novoStatus as any }).subscribe({
+    const novoStatus: StatusAluno = aluno.status === 'Ativo' ? 'Inativo' : 'Ativo';
+    this.alunosService.update(aluno.id, { status: novoStatus }).subscribe({
       next: () => { this.toast.success('Status alterado'); this.loadAlunos(); },
       error: (err: HttpErrorResponse) => this.toast.error(this.extrairErro(err))
     });

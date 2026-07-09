@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AvaliacoesService } from '../../core/services/avaliacoes.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AlunosService } from '../../core/services/alunos.service';
+import { AvaliacaoDto } from '../../core/models/models';
 
 @Component({
   selector: 'app-historico',
@@ -145,8 +146,8 @@ export class HistoricoComponent implements OnInit {
   private alunosService = inject(AlunosService);
 
   loading = signal(false);
-  avaliacoes = signal<any[]>([]);
-  ultimaAvaliacao = signal<any | null>(null);
+  avaliacoes = signal<AvaliacaoDto[]>([]);
+  ultimaAvaliacao = signal<AvaliacaoDto | null>(null);
 
   ngOnInit(): void {
     this.loadData();

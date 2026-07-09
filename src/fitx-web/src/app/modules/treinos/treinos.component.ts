@@ -39,10 +39,12 @@ interface GrupoExercicio {
 
       <div class="workout-grid">
         @for (workout of filteredWorkouts(); track workout.id) {
-          <div class="workout-card" [class.completed]="!workout.ativo">
+          <div class="workout-card" [class.completed]="isTreinoConcluido(workout.id) || !workout.ativo">
             <div class="workout-header">
               <span class="workout-day">{{ dayName(workout.diaSemana) }}</span>
-              @if (!workout.ativo) {
+              @if (isTreinoConcluido(workout.id)) {
+                <span class="completed-badge done">✓ Concluído</span>
+              } @else if (!workout.ativo) {
                 <span class="completed-badge">✓ Inativo</span>
               }
             </div>
@@ -53,7 +55,11 @@ interface GrupoExercicio {
             </div>
             <div class="workout-actions">
               @if (authService.user()?.role === 'Aluno' && workout.ativo) {
-                <button class="btn-primary" (click)="startTreino(workout)">Iniciar Treino</button>
+                @if (isTreinoConcluido(workout.id)) {
+                  <button class="btn-completed" disabled>✓ Treino Concluído</button>
+                } @else {
+                  <button class="btn-primary" (click)="startTreino(workout)">Iniciar Treino</button>
+                }
               }
               <button class="btn-secondary" (click)="viewDetails(workout)">Ver Detalhes</button>
             </div>
@@ -90,7 +96,10 @@ interface GrupoExercicio {
               @if (!treinoMode()) {
                 <div class="detail-row"><span class="label">Dia da semana:</span><span class="value">{{ dayName(selectedWorkout()!.diaSemana) }}</span></div>
                 <div class="detail-row"><span class="label">Data início:</span><span class="value">{{ selectedWorkout()!.dataInicio | date:'dd/MM/yyyy' }}</span></div>
-                <div class="detail-row"><span class="label">Status:</span><span class="value" [class]="selectedWorkout()!.ativo ? 'status-pending' : 'status-done'">{{ selectedWorkout()!.ativo ? 'Ativo' : 'Inativo' }}</span></div>
+                <div class="detail-row">
+                  <span class="label">Status:</span>
+                  <span class="value" [class]="statusClass(selectedWorkout()!)">{{ statusLabel(selectedWorkout()!) }}</span>
+                </div>
                 @if (selectedWorkout()!.descricao) {
                   <div class="detail-row"><span class="label">Descrição:</span><span class="value">{{ selectedWorkout()!.descricao }}</span></div>
                 }
@@ -100,7 +109,7 @@ interface GrupoExercicio {
                   <div class="section-header">
                     <span class="section-label">Exercícios ({{ groupedExercises().length }})</span>
                     @if (treinoMode()) {
-                      <span class="progress-text">{{ allSeriesCompleted() }}/{{ selectedWorkout()!.series!.length }} séries</span>
+                      <span class="progress-text">{{ allSeriesCompleted() }}/{{ groupedExercises().length }} exercícios</span>
                     }
                   </div>
                   @if (treinoMode()) {
@@ -124,29 +133,25 @@ interface GrupoExercicio {
                           }
                         </div>
                       } @else {
-                        <div class="grupo-header">
-                          <span class="grupo-nome">{{ grupo.exercicioNome }}</span>
-                          <span class="grupo-meta">{{ grupo.seriesCount }} séries de {{ grupo.repeticoes }} reps{{ grupo.carga ? ' - ' + grupo.carga + 'kg' : '' }}</span>
-                        </div>
-                        @for (serie of grupo.series; track serie.id) {
-                          <div class="exercise-row" [class.completed]="serieCompleted(serie.id)">
-                            <div class="exercise-row-left">
-                              <span class="exercise-index" [class.done]="serieCompleted(serie.id)">{{ serie.ordem }}</span>
-                              <div class="exercise-info">
-                                <span class="ex-name">Série {{ serie.ordem }}</span>
-                                <span class="ex-detail">{{ repCounts().get(serie.id) || 0 }}/{{ serie.repeticoes }} reps{{ serie.carga ? ' - ' + serie.carga + 'kg' : '' }}</span>
-                              </div>
+                        <div class="exercise-row" [class.completed]="exerciseCompleted(grupo.exercicioId, grupo.seriesCount)">
+                          <div class="exercise-row-left">
+                            <span class="exercise-index" [class.done]="exerciseCompleted(grupo.exercicioId, grupo.seriesCount)">{{ grupo.seriesCount }}</span>
+                            <div class="exercise-info">
+                              <span class="ex-name">{{ grupo.exercicioNome }}</span>
+                              <span class="ex-detail">{{ grupo.repeticoes }} reps{{ grupo.carga ? ' - ' + grupo.carga + 'kg' : '' }}</span>
                             </div>
-                            <div class="rep-counter">
-                              <button class="rep-btn" (click)="decrementRep(serie.id)" [disabled]="(repCounts().get(serie.id) || 0) === 0">−</button>
-                              <span class="rep-value">{{ repCounts().get(serie.id) || 0 }}</span>
-                              <button class="rep-btn" (click)="incrementRep(serie.id)">+</button>
-                            </div>
-                            @if (serieCompleted(serie.id)) {
-                              <span class="serie-done-badge">✓</span>
-                            }
                           </div>
-                        }
+                          @if (!exerciseCompleted(grupo.exercicioId, grupo.seriesCount)) {
+                            <div class="serie-counter">
+                              <button class="serie-btn" (click)="decrementSeries(grupo.exercicioId)" [disabled]="getSeriesDone(grupo.exercicioId) === 0">−</button>
+                              <span class="serie-value">{{ getSeriesDone(grupo.exercicioId) }}/4</span>
+                              <button class="serie-btn" (click)="incrementSeries(grupo.exercicioId)">+</button>
+                            </div>
+                          }
+                          @if (exerciseCompleted(grupo.exercicioId, grupo.seriesCount)) {
+                            <span class="serie-done-badge">✓</span>
+                          }
+                        </div>
                       }
                     }
                   </div>
@@ -158,8 +163,13 @@ interface GrupoExercicio {
                 <button class="btn-primary" (click)="finishTreino()">✓ Concluir Treino</button>
                 <button class="btn-secondary" (click)="cancelTreino()">Sair do Treino</button>
               } @else if (authService.user()?.role === 'Aluno' && selectedWorkout()!.ativo) {
-                <button class="btn-primary" (click)="startTreino(selectedWorkout()!)">Iniciar Treino</button>
-                <button class="btn-secondary" (click)="closeDetails()">Fechar</button>
+                @if (isTreinoConcluido(selectedWorkout()!.id)) {
+                  <button class="btn-completed" disabled>✓ Treino Concluído</button>
+                  <button class="btn-secondary" (click)="closeDetails()">Fechar</button>
+                } @else {
+                  <button class="btn-primary" (click)="startTreino(selectedWorkout()!)">Iniciar Treino</button>
+                  <button class="btn-secondary" (click)="closeDetails()">Fechar</button>
+                }
               } @else {
                 <button class="btn-secondary" (click)="closeDetails()">Fechar</button>
               }
@@ -182,10 +192,21 @@ interface GrupoExercicio {
     .workout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
     .workout-card { background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s; }
     .workout-card:hover { transform: translateY(-3px); border-color: var(--color-primary); }
-    .workout-card.completed { opacity: 0.7; border-color: rgba(161, 161, 170, 0.3); }
+    .workout-card.completed { opacity: 0.85; border-color: rgba(34, 197, 94, 0.35); }
     .workout-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .workout-day { background: rgba(200, 255, 0, 0.1); color: var(--color-primary); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; }
     .completed-badge { background: rgba(161, 161, 170, 0.1); color: #a1a1aa; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; }
+    .completed-badge.done { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+    .btn-completed {
+      flex: 1;
+      padding: 0.75rem;
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: default;
+    }
     .workout-name { font-size: 1.125rem; font-weight: 600; color: var(--color-text-primary); margin: 0 0 1rem 0; }
     .workout-info { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; }
     .info-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--color-text-secondary); }
@@ -206,6 +227,7 @@ interface GrupoExercicio {
     .value { color: var(--color-text-primary); font-weight: 500; text-align: right; }
     .status-done { color: #a1a1aa; }
     .status-pending { color: var(--color-primary); }
+    .status-completed { color: #22c55e; }
     .modal-footer { display: flex; gap: 0.75rem; padding: 1rem 1.25rem; border-top: 1px solid var(--color-border); flex-shrink: 0; }
 
     .timer-section { text-align: center; padding: 0.75rem; background: var(--color-bg-elevated); border-radius: 0.75rem; margin-bottom: 1rem; border: 1px solid var(--color-border); }
@@ -236,11 +258,11 @@ interface GrupoExercicio {
     .grupo-nome { font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary); }
     .grupo-meta { font-size: 0.7rem; color: var(--color-text-secondary); }
 
-    .rep-counter { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
-    .rep-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--color-border); border-radius: 50%; color: var(--color-text-primary); cursor: pointer; font-size: 1rem; font-weight: 700; transition: all 0.2s; padding: 0; line-height: 1; }
-    .rep-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
-    .rep-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .rep-value { font-size: 1rem; font-weight: 800; color: var(--color-primary); min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+    .serie-counter { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+    .serie-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--color-border); border-radius: 50%; color: var(--color-text-primary); cursor: pointer; font-size: 1rem; font-weight: 700; transition: all 0.2s; padding: 0; line-height: 1; }
+    .serie-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+    .serie-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .serie-value { font-size: 0.9rem; font-weight: 800; color: var(--color-primary); min-width: 36px; text-align: center; font-variant-numeric: tabular-nums; }
     .serie-done-badge { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; background: #22c55e; color: #fff; border-radius: 50%; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
 
     @media (max-width: 640px) {
@@ -251,8 +273,8 @@ interface GrupoExercicio {
       .modal-content.modal-wide { max-width: 100%; }
       .timer-display { font-size: 1.6rem; }
       .exercise-row { padding: 0.5rem; gap: 0.4rem; }
-      .rep-btn { width: 24px; height: 24px; font-size: 0.9rem; }
-      .rep-value { font-size: 0.9rem; min-width: 18px; }
+      .serie-btn { width: 24px; height: 24px; font-size: 0.9rem; }
+      .serie-value { font-size: 0.8rem; min-width: 30px; }
     }
   `]
 })
@@ -267,17 +289,18 @@ export class TreinosComponent implements OnInit, OnDestroy {
   loading = signal(false);
   workouts = signal<TreinoDto[]>([]);
   filteredWorkouts = signal<TreinoDto[]>([]);
+  /** IDs de treinos concluídos no dia (força re-render do template) */
+  completedToday = signal<Set<string>>(new Set());
 
   treinoMode = signal(false);
-  repCounts = signal<Map<string, number>>(new Map());
+  exerciseSeriesDone = signal<Map<string, number>>(new Map());
 
   allSeriesCompleted = computed(() => {
-    const series = this.selectedWorkout()?.series;
-    if (!series?.length) return 0;
-    return series.filter(s => (this.repCounts().get(s.id) || 0) >= s.repeticoes).length;
+    const groups = this.groupedExercises();
+    return groups.filter(g => this.exerciseCompleted(g.exercicioId, g.seriesCount)).length;
   });
   progressPct = computed(() => {
-    const total = this.selectedWorkout()?.series?.length ?? 1;
+    const total = this.groupedExercises().length || 1;
     return (this.allSeriesCompleted() / total) * 100;
   });
 
@@ -303,7 +326,7 @@ export class TreinosComponent implements OnInit, OnDestroy {
 
   timerRunning = signal(false);
   elapsedSeconds = signal(0);
-  private timerInterval: any = null;
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
 
   timerDisplay = computed(() => {
     const totalSec = this.elapsedSeconds();
@@ -319,6 +342,7 @@ export class TreinosComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.refreshCompletedToday();
     this.loadTreinos();
   }
 
@@ -326,10 +350,64 @@ export class TreinosComponent implements OnInit, OnDestroy {
     this.stopTimer();
   }
 
+  private todayKey(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private completedStorageKey(treinoId: string): string {
+    const userId = this.authService.user()?.id ?? 'anon';
+    return `treino_concluido_${userId}_${treinoId}_${this.todayKey()}`;
+  }
+
+  private refreshCompletedToday(): void {
+    const userId = this.authService.user()?.id ?? 'anon';
+    const prefix = `treino_concluido_${userId}_`;
+    const suffix = `_${this.todayKey()}`;
+    const ids = new Set<string>();
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix) || !key.endsWith(suffix)) continue;
+      const mid = key.slice(prefix.length, key.length - suffix.length);
+      if (mid) ids.add(mid);
+    }
+    this.completedToday.set(ids);
+  }
+
+  isTreinoConcluido(treinoId: string): boolean {
+    return this.completedToday().has(treinoId);
+  }
+
+  private markTreinoConcluido(treinoId: string): void {
+    localStorage.setItem(this.completedStorageKey(treinoId), '1');
+    const next = new Set(this.completedToday());
+    next.add(treinoId);
+    this.completedToday.set(next);
+  }
+
+  statusLabel(workout: TreinoDto): string {
+    if (this.isTreinoConcluido(workout.id)) return 'Concluído hoje';
+    return workout.ativo ? 'Ativo' : 'Inativo';
+  }
+
+  statusClass(workout: TreinoDto): string {
+    if (this.isTreinoConcluido(workout.id)) return 'status-completed';
+    return workout.ativo ? 'status-pending' : 'status-done';
+  }
+
   serieCompleted(serieId: string): boolean {
-    const serie = this.selectedWorkout()?.series?.find(s => s.id === serieId);
-    if (!serie) return false;
-    return (this.repCounts().get(serieId) || 0) >= serie.repeticoes;
+    return false;
+  }
+
+  exerciseCompleted(exercicioId: string, _totalSeries: number): boolean {
+    return (this.exerciseSeriesDone().get(exercicioId) || 0) >= 4;
+  }
+
+  getSeriesDone(exercicioId: string): number {
+    return this.exerciseSeriesDone().get(exercicioId) || 0;
   }
 
   loadTreinos(): void {
@@ -374,25 +452,25 @@ export class TreinosComponent implements OnInit, OnDestroy {
   closeDetails(): void {
     this.selectedWorkout.set(null);
     this.treinoMode.set(false);
-    this.repCounts.set(new Map());
+    this.exerciseSeriesDone.set(new Map());
     this.stopTimer();
     this.elapsedSeconds.set(0);
     this.timerRunning.set(false);
   }
 
   private storageKey(workoutId: string): string {
-    return `treino_reps_${workoutId}`;
+    return `treino_series_${workoutId}`;
   }
 
-  private saveRepCounts(): void {
+  private saveExerciseSeriesDone(): void {
     const workout = this.selectedWorkout();
     if (!workout) return;
     const obj: Record<string, number> = {};
-    this.repCounts().forEach((v, k) => { obj[k] = v; });
+    this.exerciseSeriesDone().forEach((v, k) => { obj[k] = v; });
     localStorage.setItem(this.storageKey(workout.id), JSON.stringify(obj));
   }
 
-  private loadRepCounts(workoutId: string): Map<string, number> {
+  private loadExerciseSeriesDone(workoutId: string): Map<string, number> {
     try {
       const raw = localStorage.getItem(this.storageKey(workoutId));
       if (!raw) return new Map();
@@ -404,30 +482,35 @@ export class TreinosComponent implements OnInit, OnDestroy {
   }
 
   startTreino(workout: TreinoDto): void {
+    if (this.isTreinoConcluido(workout.id)) {
+      this.toast.error('Este treino já foi concluído hoje.');
+      return;
+    }
     this.selectedWorkout.set(workout);
     this.treinoMode.set(true);
-    this.repCounts.set(this.loadRepCounts(workout.id));
+    this.exerciseSeriesDone.set(this.loadExerciseSeriesDone(workout.id));
     this.elapsedSeconds.set(0);
     this.timerRunning.set(false);
     this.stopTimer();
-    this.toast.success('Treino iniciado! Conte suas repetições e use o cronômetro.');
+    this.toast.success('Treino iniciado! Use + para contar suas séries.');
   }
 
-  incrementRep(serieId: string): void {
-    const current = this.repCounts().get(serieId) || 0;
-    const map = new Map(this.repCounts());
-    map.set(serieId, current + 1);
-    this.repCounts.set(map);
-    this.saveRepCounts();
+  incrementSeries(exercicioId: string): void {
+    const current = this.exerciseSeriesDone().get(exercicioId) || 0;
+    if (current >= 4) return;
+    const map = new Map(this.exerciseSeriesDone());
+    map.set(exercicioId, current + 1);
+    this.exerciseSeriesDone.set(map);
+    this.saveExerciseSeriesDone();
   }
 
-  decrementRep(serieId: string): void {
-    const current = this.repCounts().get(serieId) || 0;
+  decrementSeries(exercicioId: string): void {
+    const current = this.exerciseSeriesDone().get(exercicioId) || 0;
     if (current === 0) return;
-    const map = new Map(this.repCounts());
-    map.set(serieId, current - 1);
-    this.repCounts.set(map);
-    this.saveRepCounts();
+    const map = new Map(this.exerciseSeriesDone());
+    map.set(exercicioId, current - 1);
+    this.exerciseSeriesDone.set(map);
+    this.saveExerciseSeriesDone();
   }
 
   startTimer(): void {
@@ -460,11 +543,17 @@ export class TreinosComponent implements OnInit, OnDestroy {
     const workout = this.selectedWorkout();
     this.stopTimer();
     this.treinoMode.set(false);
-    this.repCounts.set(new Map());
+    this.exerciseSeriesDone.set(new Map());
     this.elapsedSeconds.set(0);
     this.timerRunning.set(false);
-    this.selectedWorkout.set(null);
-    if (workout) localStorage.removeItem(this.storageKey(workout.id));
+    if (workout) {
+      localStorage.removeItem(this.storageKey(workout.id));
+      this.markTreinoConcluido(workout.id);
+      // Mantém o modal aberto mostrando o estado concluído
+      this.selectedWorkout.set({ ...workout });
+    } else {
+      this.selectedWorkout.set(null);
+    }
     this.toast.success('Treino concluído com sucesso!');
   }
 
@@ -472,7 +561,7 @@ export class TreinosComponent implements OnInit, OnDestroy {
     const workout = this.selectedWorkout();
     this.stopTimer();
     this.treinoMode.set(false);
-    this.repCounts.set(new Map());
+    this.exerciseSeriesDone.set(new Map());
     this.elapsedSeconds.set(0);
     this.timerRunning.set(false);
     if (workout) localStorage.removeItem(this.storageKey(workout.id));

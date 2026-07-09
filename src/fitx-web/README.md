@@ -1,59 +1,64 @@
-# FitxWeb
+# FitX Web
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.18.
+Front-end Angular 21 do **FitX — Smart Gym Management**.
 
-## Development server
+Monorepo pai: [FitX-Academia](https://github.com/GeanVitor1/FitX-Academia)
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Desenvolvimento
 
 ```bash
-ng generate component component-name
+# Na raiz do monorepo, suba a API primeiro:
+#   dotnet run --project src/FitX.API
+#   → http://localhost:5169
+
+npm install
+npm start
+# → http://localhost:4200
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+API configurada em `src/environments/environment.ts`:
+
+```ts
+apiUrl: 'http://localhost:5169/api'
+```
+
+## Scripts
+
+| Comando | Descrição |
+|---------|-----------|
+| `npm start` | Dev server |
+| `npm run build` | Build de produção |
+| `npm test` | Vitest |
+| `npm run format` | Prettier |
+
+## Estrutura
+
+```text
+src/app/
+├── core/       # Auth, guards, interceptors, services HTTP, models
+├── shared/     # Toast, diretivas, dados
+├── layout/     # Shell com sidebar
+├── modules/    # Features (landing, treinos, check-in, admin...)
+└── theme/      # Dark / light
+```
+
+## Contas demo
+
+Use a seção **Demo** na landing ou faça login com:
+
+| E-mail | Senha | Role |
+|--------|-------|------|
+| admin@fitx.com | 1234 | Admin |
+| prof@fitx.com | 1234 | Professor |
+| aluno@fitx.com | 1234 | Aluno |
+| recepcao@fitx.com | 1234 | Recepcionista |
+| financeiro@fitx.com | 1234 | Financeiro |
+
+## Docker
 
 ```bash
-ng generate --help
+docker build -t fitx-web .
+# Ou via compose na raiz do monorepo
 ```
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Documentação completa do produto: [README raiz](../../README.md) · [Arquitetura](../../docs/ARCHITECTURE.md)

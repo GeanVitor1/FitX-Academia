@@ -1,10 +1,22 @@
 {
   "name": "FitX - Smart Gym Management",
   "short_name": "FitX",
-  "theme_color": "#09090b",
-  "background_color": "#09090b",
+  "description": "Sistema completo de gestão de academias",
+  "theme_color": "#c8ff00",
+  "background_color": "#0a0a0a",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "scope": "/",
   "start_url": "/",
-  "icons": []
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["fitness", "health", "lifestyle"],
+  "lang": "pt-BR",
+  "dir": "ltr"
 }

@@ -32,26 +32,6 @@ public class UsuarioService
         return ResponseDto<UsuarioDto>.SuccessResult(MapToDto(usuario));
     }
 
-    public async Task<ResponseDto<UsuarioDto>> CreateAsync(CreateUsuarioDto dto)
-    {
-        if (await _usuarioRepository.EmailExistsAsync(dto.Email))
-            return ResponseDto<UsuarioDto>.FailureResult("Email já está em uso");
-
-        var usuario = new Usuario
-        {
-            Nome = dto.Nome,
-            Email = dto.Email,
-            Role = dto.Role,
-            Telefone = dto.Telefone,
-            Ativo = true
-        };
-
-        await _usuarioRepository.AddAsync(usuario);
-        await _unitOfWork.SaveChangesAsync();
-
-        return ResponseDto<UsuarioDto>.SuccessResult(MapToDto(usuario), "Usuário criado com sucesso");
-    }
-
     public async Task<ResponseDto<UsuarioDto>> UpdateAsync(Guid id, UpdateUsuarioDto dto)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(id);
