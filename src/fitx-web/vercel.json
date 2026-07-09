@@ -1,6 +1,6 @@
 {
   "buildCommand": "ng build",
-  "outputDirectory": "dist/fitx-web",
+  "outputDirectory": "dist/fitx-web/browser",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
