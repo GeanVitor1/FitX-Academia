@@ -11,7 +11,7 @@ COPY ["src/FitX.Domain/FitX.Domain.csproj", "src/FitX.Domain/"]
 COPY ["src/FitX.Infrastructure/FitX.Infrastructure.csproj", "src/FitX.Infrastructure/"]
 COPY ["src/FitX.Persistence/FitX.Persistence.csproj", "src/FitX.Persistence/"]
 COPY ["src/FitX.Identity/FitX.Identity.csproj", "src/FitX.Identity/"]
-RUN dotnet restore
+RUN dotnet restore src/FitX.API/FitX.API.csproj
 
 COPY . .
 WORKDIR /src/src/FitX.API
