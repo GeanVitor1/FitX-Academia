@@ -75,7 +75,7 @@ export const routes: Routes = [
       {
         path: 'mensalidades',
         loadComponent: () => import('./modules/mensalidades/mensalidades.component').then(m => m.MensalidadesComponent),
-        data: { roles: ['Aluno', 'Recepcionista', 'Financeiro', 'Admin'] }
+        data: { roles: ['Aluno', 'Financeiro', 'Admin'] }
       },
 
       // Professor

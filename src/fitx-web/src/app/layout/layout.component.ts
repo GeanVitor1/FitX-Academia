@@ -125,7 +125,7 @@ import { FooterComponent } from './footer/footer.component';
             </a>
           }
 
-          @if (authService.isAdmin() || authService.isRecepcionista() || authService.isFinanceiro()) {
+          @if (authService.isAdmin() || authService.isFinanceiro()) {
             <div class="nav-divider"></div>
             <span class="nav-section">Financeiro</span>
 
