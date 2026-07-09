@@ -93,8 +93,17 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(object), 200)]
     public async Task<IActionResult> GetQuickLogins()
     {
+        var demoEmails = new[]
+        {
+            "admin@fitx.com",
+            "prof@fitx.com",
+            "aluno@fitx.com",
+            "recepcao@fitx.com",
+            "financeiro@fitx.com"
+        };
+
         var users = await _userManager.Users
-            .Where(u => u.Ativo)
+            .Where(u => u.Ativo && demoEmails.Contains(u.Email ?? string.Empty))
             .Select(u => new QuickLoginInfo
             {
                 Email = u.Email ?? string.Empty,
