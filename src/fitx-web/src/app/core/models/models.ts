@@ -128,6 +128,7 @@ export interface TreinoDto {
   ativo: boolean;
   diaSemana: number;
   totalSeries: number;
+  series?: SerieDto[];
 }
 
 export interface CreateTreinoDto {

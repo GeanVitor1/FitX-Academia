@@ -1070,5 +1070,10 @@ export class AgendaComponent implements OnInit {
     if (!treino) return;
     this.treinos.update(list => list.filter(t => t.id !== treino.id));
     this.closeModal();
+    this.treinosService.delete(treino.id).subscribe({
+      error: () => {
+        this.treinos.update(list => [...list, treino]);
+      }
+    });
   }
 }

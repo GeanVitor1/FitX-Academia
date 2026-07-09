@@ -16,6 +16,7 @@ public class TreinoDto
     public bool Ativo { get; set; }
     public int DiaSemana { get; set; }
     public int TotalSeries { get; set; }
+    public List<SerieDto> Series { get; set; } = new();
 }
 
 public class CreateTreinoDto

@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { ScrollAnimateDirective } from '../../shared/directives/scroll-animate.directive';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { HeroComponent } from './components/hero/hero.component';
 import { PlansComponent } from './components/plans/plans.component';
@@ -19,6 +20,7 @@ import { ToastService } from '../../shared/services/toast.service';
   standalone: true,
   imports: [
     CommonModule,
+    ScrollAnimateDirective,
     NavbarComponent,
     HeroComponent,
     PlansComponent,
@@ -44,16 +46,16 @@ import { ToastService } from '../../shared/services/toast.service';
       <section class="demo-section">
         <div class="demo-container">
           <div class="demo-header">
-            <span class="demo-tag">DEMO</span>
-            <h2>Acesse o <span class="highlight">Sistema</span></h2>
-            <p>Explore todas as funcionalidades com acesso rapido</p>
+            <span class="demo-tag" scrollAnimate animationType="fadeUp">DEMO</span>
+            <h2 scrollAnimate animationType="fadeUp" [delay]="0.05">Acesse o <span class="highlight">Sistema</span></h2>
+            <p scrollAnimate animationType="fadeUp" [delay]="0.1">Explore todas as funcionalidades com acesso rapido</p>
           </div>
           @if (loading) {
             <div class="demo-loading">Carregando...</div>
           }
           <div class="demo-grid">
-            @for (account of accounts; track account.email) {
-              <button class="demo-card" (click)="quickLogin(account)">
+            @for (account of accounts; track account.email; let i = $index) {
+              <button class="demo-card" (click)="quickLogin(account)" scrollAnimate animationType="fadeUp" [delay]="0.15 + i * 0.08">
                 <span class="demo-icon">{{ account.icon }}</span>
                 <span class="demo-role">{{ account.role }}</span>
                 <span class="demo-email">{{ account.email }}</span>

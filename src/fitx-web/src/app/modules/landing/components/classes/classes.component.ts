@@ -740,7 +740,7 @@ export class ClassesComponent implements AfterViewInit, OnDestroy {
       this.initBackgroundCrossfade();
       this.initContentAnimations();
       this.initProgressRail();
-    }, 100);
+    }, 50);
   }
 
   ngOnDestroy(): void {
@@ -762,24 +762,24 @@ export class ClassesComponent implements AfterViewInit, OnDestroy {
     tl.to('.hero-tag', {
       opacity: 1,
       y: 0,
-      duration: 0.8,
-      delay: 0.3
+      duration: 0.5,
+      delay: 0.1
     })
     .to('.hero-line', {
       opacity: 1,
       y: 0,
-      duration: 0.8,
-      stagger: 0.12
-    }, '-=0.4')
+      duration: 0.5,
+      stagger: 0.08
+    }, '-=0.25')
     .to('.hero-subtitle', {
       opacity: 1,
       y: 0,
-      duration: 0.7
-    }, '-=0.4')
+      duration: 0.5
+    }, '-=0.25')
     .to('.scroll-indicator', {
       opacity: 1,
-      duration: 0.6
-    }, '-=0.2');
+      duration: 0.4
+    }, '-=0.15');
 
     this.heroTimeline = tl;
   }

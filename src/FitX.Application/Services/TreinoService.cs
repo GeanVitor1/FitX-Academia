@@ -187,7 +187,20 @@ public class TreinoService
             DataFim = treino.DataFim,
             Ativo = treino.Ativo,
             DiaSemana = treino.DiaSemana,
-            TotalSeries = treino.Series?.Count ?? 0
+            TotalSeries = treino.Series?.Count ?? 0,
+            Series = treino.Series?
+                .OrderBy(s => s.Ordem)
+                .Select(s => new SerieDto
+                {
+                    Id = s.Id,
+                    ExercicioId = s.ExercicioId,
+                    ExercicioNome = s.Exercicio?.Nome ?? string.Empty,
+                    Repeticoes = s.Repeticoes,
+                    Carga = s.Carga,
+                    DescansoSegundos = s.DescansoSegundos,
+                    Ordem = s.Ordem,
+                    Observacao = s.Observacao
+                }).ToList() ?? new()
         };
     }
 }

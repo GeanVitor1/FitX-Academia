@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { ScrollAnimateDirective } from '../../../../shared/directives/scroll-animate.directive';
 interface Plan {
   name: string;
   price: string;
@@ -11,7 +12,7 @@ interface Plan {
 @Component({
   selector: 'app-plans',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ScrollAnimateDirective],
   template: `
     <section id="planos" class="plans-section">
       <div class="plans-container">
@@ -19,25 +20,25 @@ interface Plan {
           <div class="plans-left">
             <span class="watermark">02</span>
             <div class="plans-info">
-              <div class="section-tag">
+              <div class="section-tag" scrollAnimate animationType="fadeLeft">
                 <span class="tag-line"></span>
                 PLANOS
               </div>
-              <h2 class="section-title">
+              <h2 class="section-title" scrollAnimate animationType="fadeUp" [delay]="0.05">
                 O PLANO IDEAL PARA<br>
                 <span class="highlight">VOCÊ</span>
               </h2>
-              <p class="section-subtitle">
+              <p class="section-subtitle" scrollAnimate animationType="fadeUp" [delay]="0.1">
                 Planos flexíveis que se adaptam à sua rotina e aos seus objetivos
               </p>
-              <a href="#planos" class="section-link">VER TODOS OS PLANOS →</a>
+              <a href="#planos" class="section-link" scrollAnimate animationType="fadeUp" [delay]="0.15">VER TODOS OS PLANOS →</a>
             </div>
           </div>
 
           <div class="plans-right">
             <div class="plans-grid">
               @for (plan of plans; track plan.name; let i = $index) {
-                <div class="plan-card" [class.popular]="plan.popular">
+                <div class="plan-card" [class.popular]="plan.popular" scrollAnimate animationType="fadeUp" [delay]="0.2 + i * 0.1">
                   @if (plan.popular) {
                     <div class="popular-badge">MAIS ESCOLHIDO</div>
                   }
