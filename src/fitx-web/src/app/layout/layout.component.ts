@@ -11,7 +11,7 @@ import { FooterComponent } from './footer/footer.component';
   standalone: true,
   imports: [CommonModule, RouterModule, FooterComponent],
   template: `
-    <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed()">
+    <div class="layout" [class.sidebar-collapsed]="sidebarCollapsed()" [class.sidebar-mobile-open]="mobileSidebarOpen()">
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="logo">
@@ -787,7 +787,7 @@ import { FooterComponent } from './footer/footer.component';
         z-index: 50;
       }
 
-      .sidebar-collapsed .sidebar {
+      .sidebar-mobile-open .sidebar {
         transform: translateX(0);
         width: 240px;
       }
@@ -810,7 +810,7 @@ import { FooterComponent } from './footer/footer.component';
     }
 
     @media (max-width: 640px) {
-      .sidebar-collapsed .sidebar {
+      .sidebar-mobile-open .sidebar {
         width: 100%;
       }
 
@@ -834,6 +834,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   private notificacoesService = inject(NotificacoesService);
 
   sidebarCollapsed = signal(false);
+  mobileSidebarOpen = signal(false);
   unreadCount = signal(0);
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -851,7 +852,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   toggleSidebar(): void {
-    this.sidebarCollapsed.update(v => !v);
+    if (window.innerWidth <= 1024) {
+      this.mobileSidebarOpen.update(v => !v);
+    } else {
+      this.sidebarCollapsed.update(v => !v);
+    }
   }
 
   private loadUnreadCount(): void {
